@@ -67,14 +67,23 @@ def keep_main_character_component(image):
 def extract_cell(sheet, row, col):
     cell_w, cell_h = sheet.width // COLS, sheet.height // ROWS
     x0, y0 = col*cell_w, row*cell_h
-    cell = remove_magenta_matte(sheet.crop((x0, y0, x0+cell_w, y0+cell_h)))
+    # Walk poses sit close to the bottom of their source cells. Extend the
+    # crop into the clear gap before the run row so shoe outlines are not sliced.
+    bottom_extra = 18 if row == 0 else 0
+    cell = remove_magenta_matte(sheet.crop((x0, y0, x0+cell_w, min(sheet.height, y0+cell_h+bottom_extra))))
     cell = keep_main_character_component(cell)
     bbox = cell.getchannel("A").getbbox()
     if bbox is None:
         raise RuntimeError(f"Empty new-cartoon pose at row {row}, column {col}")
     sprite = cell.crop(bbox)
-    if sprite.width > FRAME_W-8 or sprite.height > FRAME_H-8:
-        raise RuntimeError(f"Pose row {row}, column {col} will not fit without scaling: {sprite.size}")
+    # Fit the complete silhouette inside the shared canvas. If the recovered
+    # full artwork exceeds the safe bounds, scale it proportionally instead of
+    # cropping a foot or outer outline.
+    max_w, max_h = FRAME_W-8, FRAME_H-8
+    if sprite.width > max_w or sprite.height > max_h:
+        scale = min(max_w/sprite.width, max_h/sprite.height)
+        size = (max(1, round(sprite.width*scale)), max(1, round(sprite.height*scale)))
+        sprite = sprite.resize(size, Image.Resampling.LANCZOS)
     frame = Image.new("RGBA", (FRAME_W, FRAME_H), (0,0,0,0))
     frame.alpha_composite(sprite, ((FRAME_W-sprite.width)//2, FRAME_H-4-sprite.height))
     return frame
