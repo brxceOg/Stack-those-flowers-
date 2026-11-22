@@ -137,7 +137,8 @@ function extractGridPoseCanvases(img){
     }
    }
    const componentW=maxX-minX+1,componentH=maxY-minY+1;
-   const isSeparator=(componentW>w*.6&&componentH<10)||(componentH>h*.6&&componentW<10);\n   if(!isSeparator&&area>=8)for(let k=0;k<bottom;k++)kept[stack[k]]=1;
+   const isSeparator=(componentW>w*.6&&componentH<10)||(componentH>h*.6&&componentW<10);
+   if(!isSeparator&&area>=8)for(let k=0;k<bottom;k++)kept[stack[k]]=1;
   }
   // Flood the non-foreground pixels from the cell perimeter. This makes
   // paper transparent while preserving enclosed light details inside the
