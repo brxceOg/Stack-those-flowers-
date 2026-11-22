@@ -5,7 +5,7 @@ A cheerful, handcrafted pixel-art garden. The world should feel like a little li
 
 ## Existing source art
 Use the repository's two supplied sheets as the source of truth:
-- `IMG_1369.jpeg`: farmer/helper character, walk and run poses, flower pickup poses, flower growth stages, loose petals, flower varieties, and modular ground tiles.
+- `IMG_1372.jpeg`: current worker character sprite sheet, used for the worker walk, run, and flower-picking animations.\n- `IMG_1369.jpeg`: original world, flower, and tile art source.
 - `IMG_1370.jpeg`: staged flower-pile sizes and launcher-related visual reference.
 
 Preserve both original files unchanged. All production sprite assets must be derived transparent PNGs (individual sprites and/or sprite sheets), never destructive edits to the source art.
