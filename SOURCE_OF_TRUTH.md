@@ -23,7 +23,7 @@ A standalone, mobile-first idle gathering game for iPhone Safari, hosted as a Gi
 - The HUD and build drawer remain fixed while the world moves beneath them.
 
 ## Structure selling
-- Sell Structure mode lets the player select a Worker House or Campfire, review its flower refund, then explicitly confirm or cancel.
+- Selling is accessed from the contextual menu opened by tapping a placed Worker House or Campfire; the player reviews its flower refund, then explicitly confirms or cancels. The build drawer contains no sell-structure mode or button.
 - Selling a Worker House refunds 5 flowers and removes its assigned worker; selling a Campfire refunds 12 flowers and removes its boost radius.
 
 ## Technical constraints
