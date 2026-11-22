@@ -87,7 +87,7 @@ Preserve both original files unchanged. All production sprite assets must be der
 - `IMG_1395.jpeg` is the dedicated default-worker dye-vat interaction sheet. It is a 4-column × 2-row sheet: the upper row is the four-frame approach/run cycle; the lower row is the four-frame pick-up-and-drink sequence.
 - Isolate all eight cells independently using the same connected pale-background removal and separator-line cleanup used for the final worker sheets. Preserve the worker's full outline, hand details, and the small drink prop; keep the original JPEG unchanged.
 - Pack the upper and lower rows into separate transparent four-frame strips using one shared scale and ground baseline. Play the drink strip once from beginning to end; do not loop it.
-- The worker only consumes a dye vat after reaching it. The vat must be removed from the world/save when the drinking sequence begins, and the worker returns to normal autonomous flower gathering when the sequence finishes.
+- Each default worker has a 2% chance per second to seek an unclaimed dye vat while eligible. Keep the one-worker-per-vat reservation and consume the vat only after the worker reaches it. The vat must be removed from the world/save when the drinking sequence begins, and the worker returns to normal autonomous flower gathering when the sequence finishes.
 - A completed drink grants a temporary 90-second Rainbow Rush: +30% movement speed, +30% flower-picking speed, and a 20% chance for a delivery to yield one extra flower. Apply a moving rainbow-spectrum overlay and bright sweeping shine only to the worker's opaque character pixels. The effect and buffs expire automatically.
 
 ## Final default character sheets
