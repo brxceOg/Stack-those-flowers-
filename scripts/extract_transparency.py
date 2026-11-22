@@ -173,6 +173,48 @@ def retain_sprite_components(crop, max_gap=3):
                 rgba[y, x, :3] = 0
     return Image.fromarray(rgba, "RGBA")
 
+def extract_flower_sprite_sheet():
+    """
+    Extract only the four flower cutouts used in-game.
+    The source labels sit above the flower row and were entering the old broad
+    crops. Start below that heading, then retain the flower's connected artwork
+    and nearby detached petals/leaves only.
+    """
+    atlas = Image.open(OUT / "flower-atlas.png").convert("RGBA")
+    frame_w, frame_h = 65, 90
+    # These are the established source columns for each flower variety.
+    source_x = [18, 440, 720, 910]
+    sheet = Image.new("RGBA", (frame_w * 4, frame_h), (0, 0, 0, 0))
+    for i, sx in enumerate(source_x):
+        # Exclude the heading band; the flower artwork sits below it.
+        crop = atlas.crop((sx, 454, sx + frame_w, 520))
+        crop = remove_tiny_alpha_components(crop, minimum_area=5)
+        crop = retain_sprite_components(crop, max_gap=6)
+        bbox = crop.getchannel("A").getbbox()
+        if bbox is None:
+            raise RuntimeError(f"Flower variety {i} produced an empty cutout")
+        sprite = crop.crop(bbox)
+        if sprite.width > frame_w or sprite.height > frame_h - 20:
+            raise RuntimeError(f"Flower variety {i} exceeds its clean frame: {sprite.size}")
+        frame = Image.new("RGBA", (frame_w, frame_h), (0, 0, 0, 0))
+        # Keep the original bottom alignment while removing the label pixels.
+        frame.alpha_composite(sprite, ((frame_w - sprite.width) // 2,
+                                       frame_h - sprite.height))
+        sheet.alpha_composite(frame, (i * frame_w, 0))
+        print(f"flower variety {i}: isolated artwork bounds={bbox}, canvas={frame_w}x{frame_h}")
+    path = OUT / "flower-sprites.png"
+    sheet.save(path, optimize=True)
+    check = Image.open(path).convert("RGBA")
+    if check.size != (frame_w * 4, frame_h):
+        raise RuntimeError("Flower sprite sheet dimensions failed")
+    alpha = np.asarray(check.getchannel("A"))
+    for i in range(4):
+        cell = alpha[:, i * frame_w:(i + 1) * frame_w]
+        if not np.any(cell):
+            raise RuntimeError(f"Flower sprite frame {i} is empty")
+    print(f"{path.relative_to(ROOT)}: four isolated flower cutouts; {check.size}")
+
+
 def extract_worker_cycles():
     # Segment each farmer pose from the transparent source by its connected silhouette.
     # Five clean frames per source cycle are present in the supplied top row.
@@ -217,6 +259,7 @@ def extract_worker_cycles():
 
 remove_connected_paper("IMG_1369.jpeg", OUT / "flower-atlas.png")
 remove_connected_paper("IMG_1370.jpeg", OUT / "flower-pile-atlas.png")
+extract_flower_sprite_sheet()
 extract_worker_cycles()
 
 # New worker sheet extraction is handled by extract_worker_sheet.py.
