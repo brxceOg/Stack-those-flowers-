@@ -755,7 +755,7 @@ function assignFlower(w){
   }
   else if(w.state==='drinking'){
    w.anim+=dt;w.timer-=dt;
-   if(w.timer<=0){emitRainbowBurst(w.x,w.y-30);w.drinkVat=null;w.dyeBuffDelay=.28;w.state='search';w.anim=0;saveGame()}
+   if(w.timer<=0){w.drinkVat=null;emitRainbowBurst(w.x,w.y-30);w.dyeBuffDelay=.28;w.state='search';w.anim=0;saveGame()}
   }
   else {
   if(w.state==='idle'||w.state==='search')assignFlower(w);
