@@ -150,9 +150,10 @@ function drawPile(){
  // making it read as a dark oval directly beneath the flowers.
  ctx.fillStyle='rgba(35,59,34,.25)';ctx.beginPath();ctx.ellipse(3,-9,116,25,-.025,0,Math.PI*2);ctx.fill();
  ctx.fillStyle='rgba(35,59,34,.12)';ctx.beginPath();ctx.ellipse(1,-5,94,15,-.025,0,Math.PI*2);ctx.fill();
- // Keep a lighter garden-ground mound at the base of the accumulated flowers.
- ctx.fillStyle='#527c43';ctx.beginPath();ctx.ellipse(0,25,112,29,0,0,Math.PI*2);ctx.fill();
- ctx.fillStyle='rgba(37,70,39,.10)';ctx.beginPath();ctx.ellipse(0,28,91,19,0,0,Math.PI*2);ctx.fill();
+ // The darker oval was a second ground-shadow layer; move it behind
+ // the flowers too, so no heavy shadow remains directly underneath.
+ ctx.fillStyle='rgba(48,78,43,.30)';ctx.beginPath();ctx.ellipse(0,-8,112,29,-.025,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle='rgba(37,70,39,.13)';ctx.beginPath();ctx.ellipse(0,-5,91,19,-.025,0,Math.PI*2);ctx.fill();
  if(atlasReady&&n>0){
   // Pack real flower cutouts into overlapping rows. Each higher row is
   // slightly narrower, creating a rounded mound instead of a flat grid.
