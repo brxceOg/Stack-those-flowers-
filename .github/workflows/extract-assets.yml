@@ -5,7 +5,9 @@ on:
     paths:
       - "IMG_1369.jpeg"
       - "IMG_1370.jpeg"
+      - "IMG_1371.jpeg"
       - "scripts/extract_transparency.py"
+      - "scripts/extract_worker_sheet.py"
   workflow_dispatch:
 permissions:
   contents: write
@@ -21,11 +23,13 @@ jobs:
         run: python -m pip install --upgrade Pillow numpy
       - name: Remove connected white sheet background
         run: python scripts/extract_transparency.py
+      - name: Extract worker walk, run, and flower-pick animations
+        run: python scripts/extract_worker_sheet.py
       - name: Commit generated transparent PNG atlases
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add assets/flower-atlas.png assets/flower-pile-atlas.png assets/worker-walk.png assets/worker-run.png
+          git add assets/flower-atlas.png assets/flower-pile-atlas.png assets/worker-walk.png assets/worker-run.png assets/worker-pick.png
           if git diff --cached --quiet; then
             echo "No generated asset changes."
           else
