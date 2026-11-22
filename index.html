@@ -636,7 +636,7 @@ function drawWorker(w){
   spriteCtx.restore();ctx.drawImage(spriteCanvas,-64,-64);
  }
  // Keep the consumed vat visible as a held prop throughout the drink sequence.
- if(drinking&&w.drinkVat)drawHeldDyeVat(w.drinkVat,characterSize);
+ if(drinking&&w.drinkVat&&frame<count-1)drawHeldDyeVat(w.drinkVat,characterSize);
  // Use the same hand-relative flower placement and dimensions as Dye Makers.
  if(w.carry&&(w.state==='toLauncher'||w.state==='preToss')){
   drawHeldFlower(characterSize,characterSize,w.carry);
