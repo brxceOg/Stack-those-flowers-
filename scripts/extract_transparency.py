@@ -183,7 +183,7 @@ def extract_flower_sprite_sheet():
     atlas = Image.open(OUT / "flower-atlas.png").convert("RGBA")
     frame_w, frame_h = 65, 90
     # These are the established source columns for each flower variety.
-    source_x = [80, 440, 720, 910]
+    source_x = [145, 440, 720, 910]
     sheet = Image.new("RGBA", (frame_w * 4, frame_h), (0, 0, 0, 0))
     for i, sx in enumerate(source_x):
         # Exclude the heading band; the flower artwork sits below it.
