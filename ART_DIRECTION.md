@@ -94,3 +94,6 @@ Preserve both original files unchanged. All production sprite assets must be der
 ## Final default character sheets
 - Base worker: `IMG_1393.jpeg` (plain outfit, 4×4). Dye Maker: `IMG_1394.jpeg` (witch outfit, 4×4).
 - Treat each of the 16 cells as an independent frame. Remove the pale sheet background by edge-connected background separation, and discard horizontal spacer rules that touch the cell boundary. Do not retain any white/pink background pixels or spacer-line fragments. Preserve enclosed light artwork, dark outlines, and all character pixels. Trim each isolated frame with a small transparent margin, then pack on a shared baseline without stretching.
+
+
+- During the default worker's dye-vat drinking sequence, render the matching isolated bottle frame from `IMG_1386.jpeg` as a separate foreground prop in the worker's raised hand. Use the same vat type as the consumed world vat, preserve its complete outline, and keep it visibly gripped throughout the drink animation. Do not substitute a generic bottle or bake the prop into the worker sheet.
