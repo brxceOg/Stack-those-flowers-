@@ -26,6 +26,9 @@ A standalone, mobile-first idle gathering game for iPhone Safari, hosted as a Gi
 - Selling is accessed from the contextual menu opened by tapping a placed Worker House or Campfire; the player reviews its flower refund, then explicitly confirms or cancels. The build drawer contains no sell-structure mode or button.
 - Selling a Worker House refunds 5 flowers and removes its assigned worker; selling a Campfire refunds 12 flowers and removes its boost radius.
 
+- When one or more dye vats are present, each default worker has a low independent chance to visit an unclaimed vat. The worker uses the dedicated `IMG_1395.jpeg` four-frame approach cycle, then plays its four-frame pick-up-and-drink sequence once. A vat is consumed when the worker reaches it and begins drinking.
+- Finishing a drink grants that worker a 90-second Rainbow Rush: +30% movement speed, +30% flower-picking speed, and a 20% chance to earn one additional flower per delivery. A rainbow shine is composited over the worker's opaque sprite pixels while the buff is active; both the buffs and visual effect expire automatically. This temporary worker buff is runtime-only and does not alter existing save data.
+
 ## Technical constraints
 - Plain HTML, CSS, and JavaScript; no build step or external runtime dependency.
 - Canvas renders the world; DOM overlays are reserved for HUD and touch controls.
