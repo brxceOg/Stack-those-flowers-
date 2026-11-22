@@ -22,9 +22,9 @@ Preserve both original files unchanged. All production sprite assets must be der
 - Validate the exported PNGs by checking their alpha channel and compositing previews over dark and colored backgrounds. A white-looking petal must remain white while the surrounding sheet background is transparent.
 
 ## Worker
-- Use the supplied farmer character: straw hat, blue overalls, light shirt, small friendly proportions.
+- Use the supplied cartoon worker from IMG_1375.jpeg. Preserve its original yellow character palette, rounded silhouette, and dark outlines; do not substitute the previous pixel-art farmer.
 - Use the walk cycle for ordinary travel and the run cycle for longer-distance movement or upgrades.
-- Use dedicated pickup poses when collecting a flower.
+- Use the two dedicated crouching/reaching poses when collecting a flower, with the separate idle pose when a worker is waiting.
 - Carry a clearly visible flower while returning to the launcher.
 - Keep the worker's feet aligned to a stable ground baseline across every frame.
 - Never stretch individual frames to fit; preserve original aspect ratio.
