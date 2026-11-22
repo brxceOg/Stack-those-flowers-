@@ -142,13 +142,17 @@ function updateLauncher(dt){
  else{emitLauncherBurst();if(launcherAnim.queue.length)startLauncherSequence(launcherAnim.queue.shift());else{launcherAnim.state='idle';launcherAnim.time=0}}
 }
 function drawPile(){
- const x=launcher.x+200,y=launcher.y+52;
+ const x=launcher.x+225,y=launcher.y+52;
  const pending=launcherAnim.queue.length+(launcherAnim.state!=='idle'&&launched.length===0?1:0)+launched.length;
  const n=Math.min(Math.max(0,totalDelivered-pending),80);
  ctx.save();ctx.translate(x,y);
- // Soft garden-ground mound beneath the accumulated flowers.
+ // Cast the pile's soft shadow up behind the flower mound, rather than
+ // making it read as a dark oval directly beneath the flowers.
+ ctx.fillStyle='rgba(35,59,34,.25)';ctx.beginPath();ctx.ellipse(3,-9,116,25,-.025,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle='rgba(35,59,34,.12)';ctx.beginPath();ctx.ellipse(1,-5,94,15,-.025,0,Math.PI*2);ctx.fill();
+ // Keep a lighter garden-ground mound at the base of the accumulated flowers.
  ctx.fillStyle='#527c43';ctx.beginPath();ctx.ellipse(0,25,112,29,0,0,Math.PI*2);ctx.fill();
- ctx.fillStyle='rgba(37,70,39,.16)';ctx.beginPath();ctx.ellipse(0,28,91,19,0,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle='rgba(37,70,39,.10)';ctx.beginPath();ctx.ellipse(0,28,91,19,0,0,Math.PI*2);ctx.fill();
  if(atlasReady&&n>0){
   // Pack real flower cutouts into overlapping rows. Each higher row is
   // slightly narrower, creating a rounded mound instead of a flat grid.
