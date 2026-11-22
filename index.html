@@ -129,7 +129,7 @@ const workerToss=new Image();workerToss.src='assets/worker-toss.png?v=matte-unmi
   const cellW=346,cellH=184;
   dyeMakerRunFrames=[0,1,2,3].map(col=>extractDyeMakerFrame(col*cellW,cellH,cellW,cellH));
   dyeMakerIdleFrame=extractDyeMakerFrame(0,cellH*2,230,cellH);
-  dyeMakerPickFrame=extractDyeMakerFrame(346,cellH*2,346,cellH);
+  dyeMakerPickFrame=extractDyeMakerFrame(400,cellH*2,280,cellH);
  };
  dyeTentSheet.onload=()=>{dyeTentCanvas=keyMagentaSheet(dyeTentSheet)};
  dyeVatSheet.onload=()=>{dyeVatCanvas=keyMagentaSheet(dyeVatSheet)};
