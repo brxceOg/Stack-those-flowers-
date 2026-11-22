@@ -128,7 +128,7 @@ function drawWorker(w){
  const picking=w.state==='picking';
  const moving=w.state==='toFlower'||w.state==='toLauncher';
  const running=w.state==='toLauncher'||(w.state==='toFlower'&&w.target&&dist(w,w.target)>300);
- const sheet=w.state==='tossing'?(workerToss.complete&&workerToss.naturalWidth?workerToss:workerCarry):(picking?workerPick:(w.state==='toLauncher'&&w.carry?workerCarry:(running?workerRun:(moving?workerWalk:workerIdle))));
+ const sheet=w.state==='tossing'?(workerToss.complete&&workerToss.naturalWidth?workerToss:workerCarry):(picking?workerPick:((w.state==='toLauncher'||w.state==='preToss')&&w.carry?workerCarry:(running?workerRun:(moving?workerWalk:workerIdle))));
  // Use only individually isolated frames from the new source sheet.
  if(!sheet.complete||!sheet.naturalWidth){ctx.restore();return}
  const FRAME_W=192,FRAME_H=192;
@@ -207,16 +207,21 @@ function update(dt){
    }
   }
   else if(w.state==='toLauncher'){
-    if(dist(w,launcher)<125){w.state='tossing';w.timer=.82;w.anim=0;w.tossSent=false}
+    if(dist(w,launcher)<125){w.state='preToss';w.timer=.3;w.anim=0}
     else moveToward(w,launcher,105,dt);
+   }
+   else if(w.state==='preToss'){
+    // Keep the carrying pose during the wind-up; the toss pose begins exactly
+    // when the flower leaves the worker's hands.
+    w.timer-=dt;
+    if(w.timer<=0){
+     w.state='tossing';w.timer=.48;w.anim=0;
+     tossedFlowers.push({x:w.x,y:w.y-31,tx:launcher.x,ty:launcher.y-34,time:0,duration:.42,color:({daisy:'#fff0dc',tulip:'#e95363',sunflower:'#f3bd39',pink:'#ed83b4'})[w.carry]||'#fff0dc'});
+    }
    }
    else if(w.state==='tossing'){
     w.anim+=dt;w.timer-=dt;
-    if(!w.tossSent&&w.timer<=.52){
-     tossedFlowers.push({x:w.x,y:w.y-31,tx:launcher.x,ty:launcher.y-34,time:0,duration:.42,color:({daisy:'#fff0dc',tulip:'#e95363',sunflower:'#f3bd39',pink:'#ed83b4'})[w.carry]||'#fff0dc'});
-     w.tossSent=true;
-    }
-    if(w.timer<=0){totalFlowers++;totalDelivered++;w.carry=null;w.tossSent=false;w.state='search';launchFlower()}
+    if(w.timer<=0){totalFlowers++;totalDelivered++;w.carry=null;w.state='search';launchFlower()}
    }
  }
  for(const p of particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt}particles=particles.filter(p=>p.life>0);
