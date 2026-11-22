@@ -6,7 +6,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "assets"
 OUT.mkdir(parents=True, exist_ok=True)
-SOURCE = ROOT / "IMG_1372.jpeg"
+SOURCE = ROOT / "IMG_1373.jpeg"
 FRAME_W, FRAME_H = 160, 224
 FRAME_COUNT_PER_ROW = 10
 ROW_COUNT = 3
@@ -272,32 +272,38 @@ def write_sheet(frames, name):
             raise RuntimeError(f"{name} frame {i} is empty")
     print(f"{path}: {len(frames)} frames, {check.size}; frame boundaries validated")
 
+# IMG_1373 is a 9-column x 3-row pose sheet. Cut each cell independently
+# so no neighboring pose can enter the extracted artwork.
 im = Image.open(SOURCE).convert("RGBA")
-rgb = np.asarray(im.convert("RGB"), dtype=np.int16)
-paper = (rgb.min(axis=2) >= 218) & ((rgb.max(axis=2) - rgb.min(axis=2)) <= 48)
-components = connected_components(~paper, min_area=250)
-row_edges = [round(im.height * i / ROW_COUNT) for i in range(ROW_COUNT + 1)]
-rows = []
-for row_index in range(ROW_COUNT):
-    y0, y1 = row_edges[row_index], row_edges[row_index + 1]
-    row = [b for b in components if b[1] >= y0 and b[3] <= y1]
-    row = sorted(row, key=lambda b: b[0])
-    if len(row) != FRAME_COUNT_PER_ROW:
-        raise RuntimeError(f"Row {row_index + 1}: expected 10 poses, detected {len(row)}")
-    rows.append((row, y0, y1))
+COLS, ROWS = 9, 3
+cell_w, cell_h = im.width / COLS, im.height / ROWS
 
-# Keep the intended action groups: active walk strides, active run strides,
-# and the complete crouch/reach/stand flower-picking action.
-walk = extract_row_cells(im, *rows[0])
-run = extract_row_cells(im, *rows[1])
-# The source's third row starts with the two actual crouch-and-grab poses.
-# The remaining poses in that row are upright travel/transition artwork and
-# must not be included in the flower-picking loop.
-pick_row = extract_row_cells(im, *rows[2])
-pick = pick_row[:2]
+def extract_cell(row, col):
+    x0 = round(col * cell_w)
+    x1 = round((col + 1) * cell_w)
+    y0 = round(row * cell_h)
+    y1 = round((row + 1) * cell_h)
+    crop = remove_connected_paper(im.crop((x0, y0, x1, y1)))
+    crop = keep_largest_art_component(crop)
+    bbox = crop.getchannel("A").getbbox()
+    if bbox is None:
+        raise RuntimeError(f"Empty worker pose at row {row}, column {col}")
+    sprite = crop.crop(bbox)
+    if sprite.width > FRAME_W - 8 or sprite.height > FRAME_H - 8:
+        raise RuntimeError(f"Worker pose {row},{col} too large: {sprite.size}")
+    frame = Image.new("RGBA", (FRAME_W, FRAME_H), (0, 0, 0, 0))
+    frame.alpha_composite(sprite, ((FRAME_W - sprite.width) // 2,
+                                   FRAME_H - 8 - sprite.height))
+    return frame
+
+# Top row: standing-to-stride sequence used for walking.
+walk = [extract_cell(0, c) for c in range(2, 9)]
+# Middle row: six distinct stride poses form the repeating run cycle.
+run = [extract_cell(1, c) for c in range(3, 9)]
+# Bottom row: two dedicated crouch/reach poses only; no travel poses enter picking.
+pick = [extract_cell(2, c) for c in range(2)]
 if len(pick) != 2:
-    raise RuntimeError("Picking sequence must contain exactly the two crouch/grab poses")
-write_sheet(walk[3:], "walk")
-# Row 2 frames 0-2 are crouch/standing transitions; only frames 3-9 form the active run cycle.
-write_sheet(run[3:], "run")
+    raise RuntimeError("Picking sequence must contain exactly two frames")
+write_sheet(walk, "walk")
+write_sheet(run, "run")
 write_sheet(pick, "pick")
