@@ -502,8 +502,8 @@ function drawWorker(w){
  const bob=moving?Math.sin(w.anim*(running?18:10))*(running?2:1.2):0;
  ctx.translate(0,bob);
  ctx.imageSmoothingEnabled=true;
- // Render the square source frame at a smaller 58×58 world size; matching
- // source and destination aspect ratios keeps the cartoon artwork crisp and undistorted.
+ // Render each worker at a larger 76×76 world size. Keep the square source
+ // frame proportional and anchor its feet to the shared ground baseline.
  // Draw boosted workers to a transparent offscreen layer so the animated shine
  // is composited onto character pixels only, never the garden behind them.
  let spriteCtx=ctx,spriteCanvas=null;
@@ -514,11 +514,11 @@ function drawWorker(w){
  if(w.state==='tossing'){
   // Toss art is stored in a wider 256x192 canvas so its raised-arm pose
   // can match the other animations' 58px character height without distortion.
-  const tossH=60;
+  const tossH=78;
   const tossW=tossH*(sheet.naturalWidth/sheet.naturalHeight);
   spriteCtx.drawImage(sheet,-tossW/2,-tossH,tossW,tossH);
  }else{
-  spriteCtx.drawImage(poseSheet,frame*FRAME_W,0,FRAME_W,FRAME_H,-29,-58,58,58);
+  spriteCtx.drawImage(poseSheet,frame*FRAME_W,0,FRAME_W,FRAME_H,-38,-76,76,76);
  }
  if(boosted){
   spriteCtx.restore();
@@ -589,7 +589,7 @@ function assignFlower(w){
   const movingFrames=running&&w.carry&&dyeMakerCarryFrames.length?dyeMakerCarryFrames:dyeMakerRunFrames;
   const frame=running?movingFrames[Math.floor(w.anim*10)%movingFrames.length]:w.state==='pickingPile'?dyeMakerPickFrames[Math.floor(w.anim*3)%dyeMakerPickFrames.length]:dyeMakerIdleFrame;
   if(!frame||!frame.w||!frame.h)return;
-  const scale=Math.min(62/frame.w,58/frame.h),dw=frame.w*scale,dh=frame.h*scale;
+  const scale=Math.min(82/frame.w,76/frame.h),dw=frame.w*scale,dh=frame.h*scale;
   ctx.save();ctx.translate(w.x,w.y);if((w.facing||1)<0)ctx.scale(-1,1);
   ctx.imageSmoothingEnabled=true;
   ctx.drawImage(dyeMakerAtlas,frame.x,frame.y,frame.w,frame.h,-dw/2,-dh,dw,dh);
