@@ -61,3 +61,5 @@ A standalone, mobile-first idle gathering game for iPhone Safari, hosted as a Gi
 - Planned housing areas automatically merge when they touch along an edge or have at most one empty grid tile between them with overlapping span along that edge. The merged area is treated as one continuous housing plot for building and flower-spawn exclusion.
 
 - Tapping a placed Worker House or Campfire opens a small contextual menu beside that structure, with disabled placeholder upgrade actions reserved for future upgrades and a Sell Structure action. Selling continues to show the existing refund confirmation before removing the structure.
+
+- Upgrade progression is universal per structure category, not individually attached to each building. The Worker House menu previews upgrades that apply to all Worker Houses; the Campfire menu previews upgrades that apply to all Campfires. Opening the menu on one building shows the upgrade options for its entire category.
