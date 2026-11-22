@@ -16,7 +16,7 @@ def remove_magenta_matte(image):
     bg = np.median(samples, axis=0)
     dist = np.sqrt(np.sum((rgb - bg) ** 2, axis=2))
     chroma = np.minimum(rgb[:, :, 0], rgb[:, :, 2]) - rgb[:, :, 1]
-    candidate = (dist < 205) & (chroma > 22) & (rgb[:, :, 0] > 65) & (rgb[:, :, 2] > 55)
+    candidate = (dist < 250) & (chroma > 8) & (rgb[:, :, 0] > 65) & (rgb[:, :, 2] > 55)
     seeds = np.zeros((h, w), dtype=bool)
     seeds[0, :] = candidate[0, :]
     seeds[-1, :] = candidate[-1, :]
