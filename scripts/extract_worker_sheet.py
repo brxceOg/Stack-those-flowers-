@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "assets"
 OUT.mkdir(parents=True, exist_ok=True)
 SOURCE = ROOT / "IMG_1371.jpeg"
-FRAME_W, FRAME_H, BASELINE = 128, 160, 151
+FRAME_W, FRAME_H, BASELINE = 160, 208, 198
 
 def connected_components(mask, min_area=250):
     h, w = mask.shape
