@@ -85,4 +85,4 @@ A standalone, mobile-first idle gathering game for iPhone Safari, hosted as a Gi
 
 - During drinking, the worker visibly holds the actual matching dye-vat sprite from `IMG_1386.jpeg`. The world vat is consumed on arrival, but its type remains on the worker's drink reference so the same isolated bottle frame can be drawn in the raised hand for the entire animation; the prop is rendered in front of the worker and does not change the drink sequence or buff timing.
 
-- Drink completion clears `w.drinkVat` before emitting the completion poof and switching the worker back to search/idle behavior. This guarantees the held bottle disappears at the end of the last drinking frame and stays gone during the 0.28-second buff delay before the rainbow buff activates.
+- The held bottle renders through the drinking poses but is hidden on the final mouth-open pose (`frame === count - 1`), before the worker returns to idle to receive the buff. Drink completion then clears `w.drinkVat` before the completion poof and search/idle transition; the bottle stays hidden during the 0.28-second buff delay.
