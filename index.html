@@ -193,9 +193,9 @@ function drawPile(){
   // Keep the shadow tucked behind the flower silhouettes, never as an
   // oversized permanent ground oval when the pile is empty.
   ctx.fillStyle='rgba(35,59,34,.25)';ctx.beginPath();
-  ctx.ellipse(2,-4,shadowRx,shadowRy,-.025,0,Math.PI*2);ctx.fill();
+  ctx.ellipse(2,1,shadowRx,shadowRy,-.025,0,Math.PI*2);ctx.fill();
   ctx.fillStyle='rgba(35,59,34,.12)';ctx.beginPath();
-  ctx.ellipse(1,0,shadowRx*.80,shadowRy*.62,-.025,0,Math.PI*2);ctx.fill();
+  ctx.ellipse(1,5,shadowRx*.80,shadowRy*.62,-.025,0,Math.PI*2);ctx.fill();
   if(atlasReady){
    // Pack real flower cutouts into overlapping rows. Each higher row is
    // slightly narrower, creating a rounded mound instead of a flat grid.
