@@ -79,12 +79,12 @@ def extract_row_cells(source, row_boxes, y0, y1):
     row_boxes = sorted(row_boxes, key=lambda b: b[0])
     if len(row_boxes) != FRAME_COUNT_PER_ROW:
         raise RuntimeError(f"Expected 10 worker poses in row, found {len(row_boxes)}")
+    centers = [(b[0] + b[2]) / 2 for b in row_boxes]
     cuts = [0]
-    for left, right in zip(row_boxes, row_boxes[1:]):
-        gap_start, gap_end = left[2], right[0]
-        if gap_end <= gap_start:
-            raise RuntimeError("Adjacent worker artwork touches/overlaps; cannot safely split frames")
-        cuts.append((gap_start + gap_end) // 2)
+    for left_center, right_center in zip(centers, centers[1:]):
+        if right_center <= left_center:
+            raise RuntimeError("Worker pose centers are not in left-to-right order")
+        cuts.append(round((left_center + right_center) / 2))
     cuts.append(source.width)
     frames = []
     for i in range(FRAME_COUNT_PER_ROW):
