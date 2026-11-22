@@ -218,3 +218,5 @@ def extract_worker_cycles():
 remove_connected_paper("IMG_1369.jpeg", OUT / "flower-atlas.png")
 remove_connected_paper("IMG_1370.jpeg", OUT / "flower-pile-atlas.png")
 extract_worker_cycles()
+
+# New worker sheet extraction is handled by extract_worker_sheet.py.
