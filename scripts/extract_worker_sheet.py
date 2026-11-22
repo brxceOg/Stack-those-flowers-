@@ -2,6 +2,7 @@ from collections import deque
 from pathlib import Path
 import numpy as np
 from PIL import Image
+from matte_removal import remove_magenta_matte
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "assets"
@@ -11,74 +12,6 @@ FRAME_DIR.mkdir(parents=True, exist_ok=True)
 SOURCE = ROOT / "IMG_1375.jpeg"
 COLS = ROWS = 4
 FRAME_W = FRAME_H = 192
-
-def remove_magenta_matte(image):
-    """Remove the edge-connected magenta field, including JPEG-colored fringe pixels."""
-    rgba = np.asarray(image.convert("RGBA"), dtype=np.uint8).copy()
-    rgb = rgba[:, :, :3].astype(np.int16)
-    h, w = rgb.shape[:2]
-    r, g, b = rgb[:, :, 0], rgb[:, :, 1], rgb[:, :, 2]
-
-    # The character is yellow with dark purple/brown outlines. A broad magenta
-    # chroma test catches the flat field and its JPEG antialiasing without
-    # touching the character palette. Connected-fill prevents unrelated colors
-    # elsewhere in a cell from being treated as background.
-    candidate = (
-        (r > 90) & (b > 85) & (g < 210)
-        & ((r - g) > 35) & ((b - g) > -70)
-    )
-    seen = np.zeros((h, w), dtype=bool)
-    queue = deque()
-
-    def add(y, x):
-        if candidate[y, x] and not seen[y, x]:
-            seen[y, x] = True
-            queue.append((y, x))
-
-    for x in range(w):
-        add(0, x)
-        add(h - 1, x)
-    for y in range(h):
-        add(y, 0)
-        add(y, w - 1)
-
-    while queue:
-        y, x = queue.popleft()
-        for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
-            ny, nx = y + dy, x + dx
-            if 0 <= ny < h and 0 <= nx < w:
-                add(ny, nx)
-
-    # Discard magenta-contaminated boundary pixels instead of un-matting them
-    # into false green pixels. The character's dark outline remains intact.
-    rgba[seen, 3] = 0
-    rgba[seen, :3] = 0
-    return defringe_magenta_edges(Image.fromarray(rgba, "RGBA"))
-
-
-def defringe_magenta_edges(image, strength=0.92):
-    """Neutralize magenta JPEG spill on the retained silhouette edge without softening its alpha."""
-    rgba = np.asarray(image.convert("RGBA"), dtype=np.uint8).copy()
-    rgb = rgba[:, :, :3].astype(np.int16)
-    alpha = rgba[:, :, 3] > 0
-    h, w = alpha.shape
-    # Find the one-pixel retained rim beside transparent sheet background.
-    edge = np.zeros((h, w), dtype=bool)
-    edge[1:, :] |= ~alpha[:-1, :]
-    edge[:-1, :] |= ~alpha[1:, :]
-    edge[:, 1:] |= ~alpha[:, :-1]
-    edge[:, :-1] |= ~alpha[:, 1:]
-    edge &= alpha
-    # Magenta contamination raises red and blue together relative to green.
-    spill = np.maximum(0, np.minimum(rgb[:, :, 0], rgb[:, :, 2]) - rgb[:, :, 1] - 10)
-    for channel in (0, 2):
-        cleaned = rgb[:, :, channel].copy()
-        cleaned[edge] = np.maximum(0, cleaned[edge] - np.rint(spill[edge] * strength)).astype(np.int16)
-        rgba[:, :, channel] = cleaned.astype(np.uint8)
-    # Fully transparent pixels carry no matte color into later resampling.
-    rgba[rgba[:, :, 3] == 0, :3] = 0
-    return Image.fromarray(rgba, "RGBA")
-
 
 def keep_main_character_component(image):
     """Drop disconnected JPEG/background remnants; retain the main figure and nearby details."""
