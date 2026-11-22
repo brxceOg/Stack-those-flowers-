@@ -108,7 +108,7 @@ const workerToss=new Image();workerToss.src='assets/worker-toss.png?v=matte-unmi
  const dyeTentSheet=new Image();dyeTentSheet.src='IMG_1384.jpeg';
  const dyeVatSheet=new Image();dyeVatSheet.src='IMG_1386.jpeg';
  let dyeMakerCanvas=null,dyeTentCanvas=null,dyeVatCanvas=null;
- let dyeMakerRunFrames=[],dyeMakerIdleFrame=null,dyeMakerPickFrame=null;
+ let dyeMakerRunFrames=[],dyeMakerCarryFrames=[],dyeMakerIdleFrame=null,dyeMakerPickFrame=null;
  function keyMagentaSheet(img){const cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;const cx=cv.getContext('2d',{willReadFrequently:true});cx.drawImage(img,0,0);const im=cx.getImageData(0,0,cv.width,cv.height),d=im.data;for(let y=0;y<cv.height;y++)for(let x=0;x<cv.width;x++){const i=(y*cv.width+x)*4,r=d[i],g=d[i+1],b=d[i+2];if(r>175&&b>145&&g<90&&r-g>75&&b-g>65)d[i+3]=0;}cx.putImageData(im,0,0);return cv}
  // Segment the entire keyed sheet into connected artwork components.
  // Each output canvas is bounded by that sprite's measured opaque pixels;
@@ -175,9 +175,11 @@ const workerToss=new Image();workerToss.src='assets/worker-toss.png?v=matte-unmi
   const rowFrames=extracted.rows.map(row=>row.items.map(c=>dyeMakerFrameMeta[extracted.rows.slice(0,extracted.rows.indexOf(row)).reduce((n,r)=>n+r.items.length,0)+row.items.indexOf(c)]));
   // Both running rows are sequenced left-to-right into one continuous cycle.
   dyeMakerRunFrames=[...(rowFrames[0]||[]),...(rowFrames[1]||[])];
-  // The next row supplies standing idle and crouching flower-pick poses.
+  // Row three supplies standing idle and crouching flower-pick poses.
   dyeMakerIdleFrame=rowFrames[2]?.[0]||null;
   dyeMakerPickFrame=rowFrames[2]?.[2]||null;
+  // The bottom row is the dedicated flower-carrying walk cycle.
+  dyeMakerCarryFrames=rowFrames[3]||[];
  };
  dyeTentSheet.onload=()=>{dyeTentCanvas=keyMagentaSheet(dyeTentSheet)};
  dyeVatSheet.onload=()=>{dyeVatCanvas=keyMagentaSheet(dyeVatSheet)};
@@ -545,7 +547,8 @@ function assignFlower(w){
  function drawDyeMaker(w){
   if(w.state==='inside'||!dyeMakerAtlas)return;
   const running=w.state==='toPile'||w.state==='toTent'||w.state==='exitingTent';
-  const frame=running?dyeMakerRunFrames[Math.floor(w.anim*10)%dyeMakerRunFrames.length]:w.state==='pickingPile'?dyeMakerPickFrame:dyeMakerIdleFrame;
+  const movingFrames=running&&w.carry&&dyeMakerCarryFrames.length?dyeMakerCarryFrames:dyeMakerRunFrames;
+  const frame=running?movingFrames[Math.floor(w.anim*10)%movingFrames.length]:w.state==='pickingPile'?dyeMakerPickFrame:dyeMakerIdleFrame;
   if(!frame||!frame.w||!frame.h)return;
   const scale=Math.min(62/frame.w,58/frame.h),dw=frame.w*scale,dh=frame.h*scale;
   ctx.save();ctx.translate(w.x,w.y);if((w.facing||1)<0)ctx.scale(-1,1);
