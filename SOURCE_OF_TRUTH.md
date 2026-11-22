@@ -26,7 +26,11 @@ A standalone, mobile-first idle gathering game for iPhone Safari, hosted as a Gi
 - Keep touch input usable in iOS Safari and respect safe-area insets.
 - Keep simulation coordinates independent from screen pixels; resize and zoom must not distort world objects.
 - Keep worker state transitions explicit: search → toFlower → toLauncher → deposit → search.
-- Keep the two original JPEG source sheets intact. Any future extracted assets should be derived files, never destructive edits to the source art.
+- Keep the two original JPEG source sheets intact. Any future extracted assets must be derived files, never destructive edits to the source art.
+- **All extracted production sprites must be PNGs with real transparency (alpha channel); a white sheet background or white matte/halo must never remain visible.**
+- Remove only connected sheet-background white pixels; preserve intentional white artwork such as petals, highlights, eyes, and shirt details. Never globally erase all white pixels.
+- Extract and inspect each frame individually before building a sprite sheet. Preserve the full silhouette, all edge pixels, original aspect ratio, and consistent frame canvas/baseline.
+- Validate each PNG by compositing it over dark and contrasting backgrounds and checking that the background is transparent while intentional white artwork remains intact.
 - Persist player progress in localStorage when save/load is added; version the save schema.
 
 ## Asset inventory
