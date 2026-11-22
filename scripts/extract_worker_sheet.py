@@ -157,3 +157,4 @@ save_cycle("run", 1, (0,1,2,3))
 save_cycle("idle", 2, (0,))
 save_cycle("pick", 2, (1,2))
 save_cycle("carry", 3, (0,1,2,3))
+save_cycle("carry-idle", 2, (3,))  # stationary, hands-forward carrying pose for launcher wind-up
