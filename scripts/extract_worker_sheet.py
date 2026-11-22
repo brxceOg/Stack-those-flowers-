@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "assets"
 OUT.mkdir(parents=True, exist_ok=True)
 SOURCE = ROOT / "IMG_1372.jpeg"
-FRAME_W, FRAME_H = 160, 208
+FRAME_W, FRAME_H = 160, 224
 FRAME_COUNT_PER_ROW = 10
 ROW_COUNT = 3
 
