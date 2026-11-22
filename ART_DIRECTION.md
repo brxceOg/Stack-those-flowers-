@@ -37,6 +37,8 @@ Preserve both original files unchanged. All production sprite assets must be der
 - Flowers should visibly regrow after being harvested.
 
 ## Flower Launcher and pile
+- The supplied collection sheet's first frame is also the permanent idle launcher pose; never show the old placeholder when the launcher is idle.
+- Draw a soft, low-opacity contact shadow directly beneath the launcher in every state (idle, collection, charge, and fire) so the machine sits naturally on the garden ground. Keep the shadow subtle and broad, not a hard black outline.
 - The launcher is the central landmark and should remain easy to find while scrolling.
 - Each delivery should trigger a short, satisfying launch/toss animation.
 - The pile should grow visibly beside the launcher, using the progression art as a size and silhouette reference.
