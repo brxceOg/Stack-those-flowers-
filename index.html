@@ -49,9 +49,9 @@ let dpr=1,viewW=0,viewH=0,camera={x:center.x,y:center.y,zoom:.78},placing=false,
 let totalFlowers=10,totalDelivered=0,workers=[],houses=[],flowers=[],particles=[],launched=[],tossedFlowers=[],last=performance.now(),toastTimer=0,saveClock=0,nextWorkerId=1;
 const SAVE_KEY='stackThoseFlowersSaveV1';
 const atlas=new Image();atlas.src='assets/flower-sprites.png?v=flowers-1380';
-const FLOWER_SOURCE_X={sunflower:0,daisy:176,'red-bouquet':352,bluebells:528,tulip:704,rose:880};
+const FLOWER_SOURCE_X={sunflower:0,daisy:224,'red-bouquet':448,bluebells:672,tulip:896,rose:1120};
 const FLOWER_TYPES=Object.keys(FLOWER_SOURCE_X);
-const FLOWER_FRAME=176;
+const FLOWER_FRAME=224;
 const pileAtlas=new Image();pileAtlas.src='assets/flower-pile-atlas.png';
 const workerWalk=new Image();workerWalk.src='assets/worker-walk.png?v=cartoon1375-final';
 const workerRun=new Image();workerRun.src='assets/worker-run.png?v=cartoon1375-final';
