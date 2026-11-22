@@ -54,7 +54,7 @@ const FLOWER_SOURCE_X={sunflower:0,daisy:224,'red-bouquet':448,bluebells:672,tul
 const FLOWER_TYPES=Object.keys(FLOWER_SOURCE_X);
 const FLOWER_FRAME=224;
 const pileAtlas=new Image();pileAtlas.src='assets/flower-pile-atlas.png';
-const workerWalk=new Image();workerWalk.src='assets/worker-walk.png?v=walk-full-feet-1122';
+const workerWalk=new Image();workerWalk.src='assets/worker-walk.png?v=walk-feet-clearance-1122';
 const workerRun=new Image();workerRun.src='assets/worker-run.png?v=matte-unmix-1122-0723';
 const workerPick=new Image();workerPick.src='assets/worker-pick.png?v=matte-unmix-1122-0723';
 const workerCarry=new Image();workerCarry.src='assets/worker-carry.png?v=matte-unmix-1122-0723';
@@ -192,7 +192,7 @@ function drawWorker(w){
   const tossW=tossH*(sheet.naturalWidth/sheet.naturalHeight);
   ctx.drawImage(sheet,-tossW/2,-tossH,tossW,tossH);
  }else{
-  ctx.drawImage(sheet,frame*FRAME_W,0,FRAME_W,FRAME_H,-29,-58,58,58);
+  ctx.drawImage(sheet,frame*FRAME_W,0,FRAME_W,FRAME_H,-29,(sheet===workerWalk?-60:-58),58,58);
  }
  // Keep the picked flower visibly nestled in the worker's hands throughout
  // the carrying walk/run and stationary launcher wind-up poses.
