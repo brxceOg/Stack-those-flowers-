@@ -52,11 +52,65 @@ def remove_magenta_matte(image):
     rgba[rgba[:, :, 3] == 0, :3] = 0
     return Image.fromarray(rgba, "RGBA")
 
+
+def keep_main_character_component(image):
+    """Drop disconnected JPEG/background remnants; retain the main figure and nearby details."""
+    rgba = np.asarray(image.convert("RGBA"), dtype=np.uint8).copy()
+    mask = rgba[:, :, 3] > 0
+    h, w = mask.shape
+    seen = np.zeros((h, w), dtype=bool)
+    components = []
+    for sy in range(h):
+        for sx in range(w):
+            if not mask[sy, sx] or seen[sy, sx]:
+                continue
+            stack = [(sy, sx)]
+            seen[sy, sx] = True
+            pixels = []
+            while stack:
+                y, x = stack.pop()
+                pixels.append((y, x))
+                for dy in (-1, 0, 1):
+                    for dx in (-1, 0, 1):
+                        ny, nx = y + dy, x + dx
+                        if (dx or dy) and 0 <= ny < h and 0 <= nx < w and mask[ny, nx] and not seen[ny, nx]:
+                            seen[ny, nx] = True
+                            stack.append((ny, nx))
+            components.append(pixels)
+    if not components:
+        return Image.fromarray(rgba, "RGBA")
+    components.sort(key=len, reverse=True)
+    print("alpha components:", [(len(p), (min(x for y,x in p), min(y for y,x in p), max(x for y,x in p)+1, max(y for y,x in p)+1)) for p in components[:6]])
+    main = components[0]
+    anchor = np.zeros((h, w), dtype=bool)
+    for y, x in main:
+        anchor[y, x] = True
+    for _ in range(4):
+        expanded = anchor.copy()
+        expanded[1:, :] |= anchor[:-1, :]
+        expanded[:-1, :] |= anchor[1:, :]
+        expanded[:, 1:] |= anchor[:, :-1]
+        expanded[:, :-1] |= anchor[:, 1:]
+        expanded[1:, 1:] |= anchor[:-1, :-1]
+        expanded[1:, :-1] |= anchor[:-1, 1:]
+        expanded[:-1, 1:] |= anchor[1:, :-1]
+        expanded[:-1, :-1] |= anchor[1:, 1:]
+        anchor = expanded
+    keep = np.zeros((h, w), dtype=bool)
+    for pixels in components:
+        if any(anchor[y, x] for y, x in pixels):
+            for y, x in pixels:
+                keep[y, x] = True
+    rgba[~keep, 3] = 0
+    rgba[~keep, :3] = 0
+    return Image.fromarray(rgba, "RGBA")
+
 def extract_cell(sheet, row, col):
     cell_w, cell_h = sheet.width // COLS, sheet.height // ROWS
     x0, y0 = col*cell_w, row*cell_h
     cell = remove_magenta_matte(sheet.crop((x0, y0, x0+cell_w, y0+cell_h)))
-    print('cell diagnostics:', row, col, 'alpha bbox:', cell.getchannel('A').getbbox(), 'corner alpha:', cell.getpixel((0,0))[3])
+    cell = keep_main_character_component(cell)
+    print('cell diagnostics:', row, col, 'alpha bbox:', cell.getchannel('A').getbbox())
     bbox = cell.getchannel("A").getbbox()
     if bbox is None:
         raise RuntimeError(f"Empty new-cartoon pose at row {row}, column {col}")
