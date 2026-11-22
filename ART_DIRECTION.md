@@ -5,10 +5,21 @@ A cheerful, handcrafted pixel-art garden. The world should feel like a little li
 
 ## Existing source art
 Use the repository's two supplied sheets as the source of truth:
-- `IMG_1369.jpeg`: farmer/helper character, walk and run cycles, flower pickup poses, flower growth stages, loose petals, flower varieties, and modular ground tiles.
+- `IMG_1369.jpeg`: farmer/helper character, walk and run poses, flower pickup poses, flower growth stages, loose petals, flower varieties, and modular ground tiles.
 - `IMG_1370.jpeg`: staged flower-pile sizes and launcher-related visual reference.
 
-Preserve the original files. Create transparent PNG sprite sheets or individual PNGs from carefully isolated source regions. Remove the white background only from extracted sprites; do not erase white pixels that belong to petals, eyes, highlights, or other artwork. Keep every animation frame on a consistent canvas size and baseline so workers never jump in scale or position.
+Preserve both original files unchanged. All production sprite assets must be derived transparent PNGs (individual sprites and/or sprite sheets), never destructive edits to the source art.
+
+## Mandatory extraction and transparency standard
+- **Every isolated sprite must have a genuinely transparent alpha background. A white background is not acceptable.**
+- Remove the white sheet/paper background completely from the extracted sprite area. Do not leave white pixels, pale halos, white rectangles, or a matte around the sprite.
+- Preserve white pixels that are part of the artwork: flower petals, eye whites, shine, highlights, shirt details, and other intentional white markings. Background removal must be based on connected background regions / careful masks, not a global “turn every white pixel transparent” operation.
+- Inspect each extracted sprite against both a dark checkerboard and a contrasting solid background. Any leftover white fringe, stray background pixels, holes in the artwork, or clipped details must be corrected before the asset is accepted.
+- Keep antialiasing/pixel edges faithful. For pixel art, favor clean hard-edged alpha where appropriate; do not blur, feather, or erode the sprite silhouette.
+- Isolate frames individually before arranging them into a sheet. Never use guessed crop boxes that cut off artwork or include neighboring frames, labels, or another sprite.
+- Give each frame a consistent transparent canvas size and baseline. Preserve the complete silhouette and original aspect ratio; do not stretch frames to fit.
+- Keep a small transparent safety margin around each sprite so the full outermost pixels remain intact, but no visible background.
+- Validate the exported PNGs by checking their alpha channel and compositing previews over dark and colored backgrounds. A white-looking petal must remain white while the surrounding sheet background is transparent.
 
 ## Worker
 - Use the supplied farmer character: straw hat, blue overalls, light shirt, small friendly proportions.
@@ -40,6 +51,7 @@ Preserve the original files. Create transparent PNG sprite sheets or individual 
 ## Animation and technical art rules
 - Nearest-neighbor/pixelated rendering for pixel-art assets.
 - Isolate each frame individually; no neighboring-frame bleed, labels, or white-sheet gutters.
-- Use consistent frame bounds and anchors across animation states.
+- Use consistent frame bounds and anchors across all animation states.
 - Do not recolor the farmer or flower art in ways that damage its original palette.
 - Keep all animation loops deterministic and smooth at variable frame rates.
+- A sprite sheet is not considered complete until every frame has been visually inspected at native scale and against contrasting backgrounds, with its transparent background verified.
