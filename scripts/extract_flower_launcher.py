@@ -23,7 +23,7 @@ def extract_cell(sheet, row, col):
     if not bbox:
         raise RuntimeError(f"Empty launcher frame at row {row}, column {col}")
     sprite = cell.crop(bbox)
-    if sprite.width > FRAME_W-8 or sprite.height > FRAME_H-8:
+    if sprite.width > FRAME_W-8 or sprite.height > FRAME_H-3:
         raise RuntimeError(f"Launcher frame too large for native-ratio canvas: {sprite.size}")
     frame = Image.new("RGBA", (FRAME_W, FRAME_H), (0,0,0,0))
     frame.alpha_composite(sprite, ((FRAME_W-sprite.width)//2, FRAME_H-sprite.height-3))
