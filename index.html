@@ -118,15 +118,15 @@ const workerToss=new Image();workerToss.src='assets/worker-toss.png?v=matte-unmi
  let dyeMakerAtlas=null,dyeMakerFrameMeta=[];
  const dyeMakerPoseWindows=[
   // Empty-handed running poses: top row (4), then second row (6).
-  {x:55,y:0,w:165,h:194},{x:435,y:0,w:165,h:194},
-  {x:805,y:0,w:185,h:194},{x:1180,y:0,w:170,h:194},
-  {x:55,y:188,w:175,h:190},{x:255,y:188,w:180,h:190},
-  {x:445,y:188,w:180,h:190},{x:790,y:188,w:190,h:190},
-  {x:1000,y:188,w:185,h:190},{x:1180,y:188,w:185,h:190},
+  {x:55,y:0,w:165,h:190},{x:435,y:0,w:165,h:190},
+  {x:805,y:0,w:185,h:190},{x:1180,y:0,w:170,h:190},
+  {x:55,y:190,w:175,h:184},{x:255,y:190,w:180,h:184},
+  {x:445,y:190,w:180,h:184},{x:790,y:190,w:190,h:184},
+  {x:1000,y:190,w:185,h:184},{x:1180,y:190,w:185,h:184},
   // Third row: two standing poses, two crouched poses, and two reaching poses.
-  {x:65,y:374,w:165,h:190},{x:260,y:374,w:180,h:190},
-  {x:450,y:374,w:185,h:190},{x:785,y:374,w:195,h:190},
-  {x:1000,y:374,w:185,h:190},{x:1180,y:374,w:190,h:190},
+  {x:65,y:374,w:165,h:186},{x:260,y:374,w:180,h:186},
+  {x:450,y:374,w:185,h:186},{x:785,y:374,w:195,h:186},
+  {x:1000,y:374,w:185,h:186},{x:1180,y:374,w:190,h:186},
   // Flower-carrying poses: bottom row (6).
   {x:60,y:560,w:175,h:130},{x:255,y:560,w:185,h:130},
   {x:450,y:560,w:185,h:130},{x:785,y:560,w:195,h:130},
@@ -155,7 +155,7 @@ const workerToss=new Image();workerToss.src='assets/worker-toss.png?v=matte-unmi
   });
   // Rebuild a clean 6-column x 4-row atlas. Every pose gets its own 192px
   // transparent cell, consistent scale, centered horizontal anchor and feet baseline.
-  const cell=192,cols=6,rows=4,gutter=20;
+  const cell=192,cols=10,rows=3,gutter=20;
   const atlas=document.createElement('canvas');
   atlas.width=cols*cell+(cols-1)*gutter;
   atlas.height=rows*cell+(rows-1)*gutter;
