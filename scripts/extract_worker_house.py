@@ -15,8 +15,8 @@ if not SOURCE.is_file():
     raise FileNotFoundError(f"Missing worker-house source sheet: {SOURCE}")
 
 sheet = Image.open(SOURCE).convert("RGBA")
-if sheet.size != (828, 228):
-    raise RuntimeError(f"Unexpected IMG_1381.jpeg dimensions: {sheet.size}; expected 828x228")
+if sheet.size != (828, 213):
+    raise RuntimeError(f"Unexpected IMG_1381.jpeg dimensions: {sheet.size}; expected 828x213")
 
 # Remove the connected magenta sheet matte once, before splitting the four
 # adjacent poses. This prevents a neighboring frame's edge from influencing
