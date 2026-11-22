@@ -9,7 +9,7 @@
 :root{color-scheme:dark;--ink:#273b2d;--cream:#fff4d8;--gold:#f6c85f;--green:#477a4c;--deep:#213c2b}
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#203b2a;font-family:ui-rounded,"Trebuchet MS",system-ui,sans-serif;color:var(--cream);touch-action:none}
 #game{position:fixed;inset:0;overflow:hidden;background:#8cbd69}
-canvas{display:block;width:100%;height:100%;touch-action:none;image-rendering:pixelated}
+canvas{display:block;width:100%;height:100%;touch-action:none;image-rendering:auto}
 .topbar{position:absolute;z-index:5;top:env(safe-area-inset-top,0px);left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:10px 12px;pointer-events:none}
 .brand,.stat{background:rgba(35,65,43,.94);border:2px solid #a5c779;border-radius:14px;box-shadow:0 3px 0 rgba(0,0,0,.2);padding:7px 11px;text-shadow:1px 2px #1e3926}
 .brand{font-weight:1000;letter-spacing:.5px;font-size:14px}.stats{display:flex;gap:7px}.stat{font-size:12px;font-weight:800;white-space:nowrap}
@@ -52,7 +52,8 @@ const atlas=new Image();atlas.src='assets/flower-sprites.png';
 const pileAtlas=new Image();pileAtlas.src='assets/flower-pile-atlas.png';
 const workerWalk=new Image();workerWalk.src='assets/worker-walk.png?v=386d36f';
 const workerRun=new Image();workerRun.src='assets/worker-run.png?v=386d36f';
-const workerPick=new Image();workerPick.src='assets/worker-pick.png?v=386d36f';
+const workerPick=new Image();workerPick.src='assets/worker-pick.png?v=1375';
+const workerCarry=new Image();workerCarry.src='assets/worker-carry.png?v=1375';
 let atlasReady=false;atlas.onload=()=>{atlasReady=true}; 
 function resize(){dpr=Math.min(devicePixelRatio||1,2);viewW=innerWidth;viewH=innerHeight;canvas.width=Math.round(viewW*dpr);canvas.height=Math.round(viewH*dpr);ctx.setTransform(dpr,0,0,dpr,0,0)}
 addEventListener('resize',resize);resize();
@@ -91,10 +92,10 @@ function drawWorker(w){
  const picking=w.state==='picking';
  const moving=w.state==='toFlower'||w.state==='toLauncher';
  const running=w.state==='toLauncher';
- const sheet=picking?workerPick:(running?workerRun:workerWalk);
+ const sheet=picking?workerPick:(running?(w.carry?workerCarry:workerRun):workerWalk);
  // Use only individually isolated frames from the new source sheet.
  if(!sheet.complete||!sheet.naturalWidth){ctx.restore();return}
- const FRAME_W=160,FRAME_H=224;
+ const FRAME_W=192,FRAME_H=224;
  const count=Math.max(1,Math.floor(sheet.naturalWidth/FRAME_W));
  // The picking sheet now contains only two crouch/grab poses.
  // Give each pose a clear, even hold; never advance into a walk frame.
@@ -102,8 +103,8 @@ function drawWorker(w){
  const frame=picking?pickFrame:(moving?(Math.floor(w.anim*(running?10:7))%count):0);
  const bob=moving?Math.sin(w.anim*(running?15:10))*1.2:0;
  ctx.translate(0,bob);
- ctx.imageSmoothingEnabled=false;
- ctx.drawImage(sheet,frame*FRAME_W,0,FRAME_W,FRAME_H,-25,-70,50,70);
+ ctx.imageSmoothingEnabled=true;
+ ctx.drawImage(sheet,frame*FRAME_W,0,FRAME_W,FRAME_H,-30,-70,60,70);
  if(w.carry){
   // Draw the exact flower variety the worker harvested, using the same atlas
   // frame and source crop as flowers growing in the world.
