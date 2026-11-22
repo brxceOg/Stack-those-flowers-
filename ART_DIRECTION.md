@@ -59,3 +59,5 @@ Preserve both original files unchanged. All production sprite assets must be der
 - Do not recolor the farmer or flower art in ways that damage its original palette.
 - Keep all animation loops deterministic and smooth at variable frame rates.
 - A sprite sheet is not considered complete until every frame has been visually inspected at native scale and against contrasting backgrounds, with its transparent background verified.
+
+- Campfires cast a subtle, warm amber circular glow with a small local radius (58 world units). Its brightness flickers gently with the fire animation; it is a visual light effect only and does not change the 320-unit worker boost radius.
