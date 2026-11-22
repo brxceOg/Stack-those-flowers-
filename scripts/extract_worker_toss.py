@@ -7,7 +7,9 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "IMG_1379.jpeg"
 OUT = ROOT / "assets"
 FRAME_DIR = OUT / "worker-frames"
-FRAME_W = FRAME_H = 192
+FRAME_W, FRAME_H = 256, 192
+TARGET_SPRITE_HEIGHT = 176
+MAX_SPRITE_WIDTH = FRAME_W - 8
 
 def remove_connected_magenta(image):
     rgba = np.asarray(image.convert("RGBA"), dtype=np.uint8).copy()
@@ -56,8 +58,16 @@ bbox = clean.getchannel("A").getbbox()
 if bbox is None:
     raise RuntimeError("No worker artwork remained after magenta removal")
 sprite = clean.crop(bbox)
-if sprite.width > FRAME_W-8 or sprite.height > FRAME_H-8:
-    raise RuntimeError(f"Toss pose too large for undistorted 192x192 frame: {sprite.size}")
+# The uploaded toss pose is a wide, compact source image. Enlarge its actual
+# artwork to the same character height as the regular 192x192 worker frames,
+# preserving aspect ratio; use a wider transparent frame so raised arms are
+# not squeezed or clipped.
+scale = TARGET_SPRITE_HEIGHT / sprite.height
+if sprite.width * scale > MAX_SPRITE_WIDTH:
+    scale = MAX_SPRITE_WIDTH / sprite.width
+sprite = sprite.resize((round(sprite.width * scale), round(sprite.height * scale)), Image.Resampling.LANCZOS)
+if sprite.width > MAX_SPRITE_WIDTH or sprite.height > FRAME_H-8:
+    raise RuntimeError(f"Toss pose will not fit without distortion: {sprite.size}")
 frame = Image.new("RGBA", (FRAME_W, FRAME_H), (0,0,0,0))
 frame.alpha_composite(sprite, ((FRAME_W-sprite.width)//2, FRAME_H-4-sprite.height))
 OUT.mkdir(parents=True, exist_ok=True)
@@ -72,4 +82,4 @@ if check.size != (FRAME_W, FRAME_H) or alpha[0,0] != 0 or np.count_nonzero(alpha
 # Ensure the canvas contains both transparent background and opaque artwork.
 if not np.any(alpha == 0) or not np.any(alpha == 255):
     raise RuntimeError("Toss pose alpha channel is incomplete")
-print(f"{path.relative_to(ROOT)}: isolated flower-toss pose, {check.size}, transparent alpha verified")
+print(f"{path.relative_to(ROOT)}: scaled flower-toss pose, {check.size}, transparent alpha verified")
