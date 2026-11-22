@@ -281,16 +281,6 @@ function drawPile(){
 function drawWorker(w){
  ctx.save();ctx.translate(w.x,w.y);
  const boosted=isWorkerBoosted(w);
- if(boosted){
-  // A restrained golden aura marks workers whose assigned house is in campfire range.
-  const shimmer=.88+Math.sin(campfireClock*5.8+w.x*.017+w.y*.011)*.09;
-  const aura=ctx.createRadialGradient(0,-31,5,0,-31,37);
-  aura.addColorStop(0,`rgba(255,205,112,${.16*shimmer})`);aura.addColorStop(.55,`rgba(255,178,76,${.095*shimmer})`);aura.addColorStop(1,'rgba(255,166,60,0)');
-  ctx.fillStyle=aura;ctx.beginPath();ctx.arc(0,-31,37,0,Math.PI*2);ctx.fill();
-  const glint=Math.sin(campfireClock*3.7+w.x*.03+w.y*.02);
-  ctx.fillStyle=`rgba(255,239,190,${.22+Math.max(0,glint)*.22})`;
-  ctx.beginPath();ctx.arc(-19,-49+Math.sin(campfireClock*4+w.x*.02)*1.5,1.5,0,Math.PI*2);ctx.fill();
- }
  ctx.scale(w.facing===-1?-1:1,1);
  const picking=w.state==='picking';
  const moving=w.state==='toFlower'||w.state==='toLauncher';
@@ -309,14 +299,34 @@ function drawWorker(w){
  ctx.imageSmoothingEnabled=true;
  // Render the square source frame at a smaller 58×58 world size; matching
  // source and destination aspect ratios keeps the cartoon artwork crisp and undistorted.
+ // Draw boosted workers to a transparent offscreen layer so the animated shine
+ // is composited onto character pixels only, never the garden behind them.
+ let spriteCtx=ctx,spriteCanvas=null;
+ if(boosted){
+  if(!drawWorker.boostCanvas){drawWorker.boostCanvas=document.createElement('canvas');drawWorker.boostCanvas.width=96;drawWorker.boostCanvas.height=96;drawWorker.boostCtx=drawWorker.boostCanvas.getContext('2d')}
+  spriteCanvas=drawWorker.boostCanvas;spriteCtx=drawWorker.boostCtx;spriteCtx.clearRect(0,0,96,96);spriteCtx.save();spriteCtx.translate(48,48);
+ }
  if(w.state==='tossing'){
   // Toss art is stored in a wider 256x192 canvas so its raised-arm pose
   // can match the other animations' 58px character height without distortion.
   const tossH=60;
   const tossW=tossH*(sheet.naturalWidth/sheet.naturalHeight);
-  ctx.drawImage(sheet,-tossW/2,-tossH,tossW,tossH);
+  spriteCtx.drawImage(sheet,-tossW/2,-tossH,tossW,tossH);
  }else{
-  ctx.drawImage(sheet,frame*FRAME_W,0,FRAME_W,FRAME_H,-29,(sheet===workerWalk?-60:-58),58,58);
+  spriteCtx.drawImage(sheet,frame*FRAME_W,0,FRAME_W,FRAME_H,-29,(sheet===workerWalk?-60:-58),58,58);
+ }
+ if(boosted){
+  spriteCtx.restore();
+  // A bright diagonal highlight sweeps across the worker on a repeating cycle.
+  // source-atop confines the gold tint and shine band to the opaque sprite pixels.
+  const shinePhase=(campfireClock*0.72+(w.x+w.y)*0.002)%1.7;
+  const shineX=-48+shinePhase*150;
+  spriteCtx.save();spriteCtx.globalCompositeOperation='source-atop';
+  spriteCtx.fillStyle='rgba(255,190,76,.17)';spriteCtx.fillRect(0,0,96,96);
+  const shine=spriteCtx.createLinearGradient(shineX-20,0,shineX+20,0);
+  shine.addColorStop(0,'rgba(255,255,255,0)');shine.addColorStop(.38,'rgba(255,238,183,.08)');shine.addColorStop(.5,'rgba(255,255,226,.82)');shine.addColorStop(.62,'rgba(255,226,157,.2)');shine.addColorStop(1,'rgba(255,255,255,0)');
+  spriteCtx.translate(48,48);spriteCtx.rotate(-.28);spriteCtx.fillStyle=shine;spriteCtx.fillRect(-70,-68,140,136);spriteCtx.restore();
+  ctx.drawImage(spriteCanvas,-48,-48);
  }
  // Keep the picked flower visibly nestled in the worker's hands throughout
  // the carrying walk/run and stationary launcher wind-up poses.
