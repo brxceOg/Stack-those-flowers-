@@ -1,0 +1,62 @@
+from collections import deque
+from pathlib import Path
+import numpy as np
+from PIL import Image
+
+ROOT = Path(__file__).resolve().parents[1]
+SOURCE = ROOT / "IMG_1379.jpeg"
+OUT = ROOT / "assets"
+FRAME_DIR = OUT / "worker-frames"
+FRAME_W = FRAME_H = 192
+
+def remove_connected_magenta(image):
+    rgba = np.asarray(image.convert("RGBA"), dtype=np.uint8).copy()
+    rgb = rgba[:, :, :3].astype(np.int16)
+    r, g, b = rgb[:,:,0], rgb[:,:,1], rgb[:,:,2]
+    # Match the vivid pink field and JPEG-compressed edge pixels only.
+    candidate = (r > 105) & (b > 85) & (g < 190) & ((r-g) > 45) & ((b-g) > 35)
+    h, w = candidate.shape
+    seen = np.zeros((h,w), dtype=bool)
+    queue = deque()
+    def add(y,x):
+        if candidate[y,x] and not seen[y,x]:
+            seen[y,x] = True
+            queue.append((y,x))
+    for x in range(w):
+        add(0,x); add(h-1,x)
+    for y in range(h):
+        add(y,0); add(y,w-1)
+    while queue:
+        y,x = queue.popleft()
+        for dy,dx in ((-1,0),(1,0),(0,-1),(0,1)):
+            ny,nx=y+dy,x+dx
+            if 0<=ny<h and 0<=nx<w:
+                add(ny,nx)
+    rgba[seen] = (0,0,0,0)
+    return Image.fromarray(rgba, "RGBA")
+
+if not SOURCE.is_file():
+    raise FileNotFoundError(SOURCE)
+source = Image.open(SOURCE).convert("RGBA")
+clean = remove_connected_magenta(source)
+bbox = clean.getchannel("A").getbbox()
+if bbox is None:
+    raise RuntimeError("No worker artwork remained after magenta removal")
+sprite = clean.crop(bbox)
+if sprite.width > FRAME_W-8 or sprite.height > FRAME_H-8:
+    raise RuntimeError(f"Toss pose too large for undistorted 192x192 frame: {sprite.size}")
+frame = Image.new("RGBA", (FRAME_W, FRAME_H), (0,0,0,0))
+frame.alpha_composite(sprite, ((FRAME_W-sprite.width)//2, FRAME_H-4-sprite.height))
+OUT.mkdir(parents=True, exist_ok=True)
+FRAME_DIR.mkdir(parents=True, exist_ok=True)
+path = OUT / "worker-toss.png"
+frame.save(path, optimize=True)
+frame.save(FRAME_DIR / "toss-01.png", optimize=True)
+check = Image.open(path).convert("RGBA")
+alpha = np.asarray(check.getchannel("A"))
+if check.size != (FRAME_W, FRAME_H) or alpha[0,0] != 0 or np.count_nonzero(alpha) < 300:
+    raise RuntimeError("Toss pose transparency/dimension validation failed")
+# Ensure the canvas contains both transparent background and opaque artwork.
+if not np.any(alpha == 0) or not np.any(alpha == 255):
+    raise RuntimeError("Toss pose alpha channel is incomplete")
+print(f"{path.relative_to(ROOT)}: isolated flower-toss pose, {check.size}, transparent alpha verified")
