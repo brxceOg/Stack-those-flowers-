@@ -24,7 +24,7 @@ Preserve both original files unchanged. All production sprite assets must be der
 
 ## Worker
 - Use the supplied cartoon worker from IMG_1375.jpeg. Preserve its original yellow character palette, rounded silhouette, and dark outlines; do not substitute the previous pixel-art farmer.
-- Use the walk cycle for ordinary travel and the run cycle for longer-distance movement or upgrades.
+- Use the walk cycle for ordinary travel. The supplied run strip repeats only two unique poses (A/B/A/B), so running states use the four distinct walk-cycle frames at a faster cadence with a stronger body bounce; this prevents the visible two-pose stutter while preserving the faster run movement speed.
 - Use the two dedicated crouching/reaching poses when collecting a flower, with the separate idle pose when a worker is waiting.
 - Carry a clearly visible flower while returning to the launcher.\n- On arrival within launcher range, hold the flower in the normal carrying pose for a brief 0.3-second wind-up. Switch to the dedicated `IMG_1379.jpeg` raised-arm toss pose at the exact moment the flower is released, then animate the flower arcing into the launcher before depositing it. The toss artwork is exported tightly cropped with transparent background and drawn by visible-art height (60 world pixels), so transparent canvas padding cannot make it appear smaller than the other worker animations.
 - Keep the worker's feet aligned to a stable ground baseline across every frame.
