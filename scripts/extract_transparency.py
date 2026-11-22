@@ -70,7 +70,7 @@ def extract_worker_cycles():
     width, height = atlas.size
     cols = 10
     cell_w = width / cols
-    y0, y1 = 22, 174
+    y0, y1 = 28, 174
     frame_w, frame_h = 128, 160
     baseline = 154
 
