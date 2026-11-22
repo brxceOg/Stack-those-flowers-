@@ -513,7 +513,7 @@ function drawWorker(w){
   const tossW=tossH*(sheet.naturalWidth/sheet.naturalHeight);
   spriteCtx.drawImage(sheet,-tossW/2,-tossH,tossW,tossH);
  }else{
-  spriteCtx.drawImage(poseSheet,frame*FRAME_W,0,FRAME_W,FRAME_H,-29,(poseSheet===workerWalk?-60:-58),58,58);
+  spriteCtx.drawImage(poseSheet,frame*FRAME_W,0,FRAME_W,FRAME_H,-29,-58,58,58);
  }
  if(boosted){
   spriteCtx.restore();
