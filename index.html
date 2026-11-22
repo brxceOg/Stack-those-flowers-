@@ -166,34 +166,42 @@ function extractGridPoseCanvases(img){
  }
  return frames;
 }
-function packPoseStrip(frames){
+// Calculate one scale from the largest visible pose, then reuse it for every
+// animation state. Per-frame "fit to box" scaling makes short/tall poses pulse
+// in size as the animation advances, even when their source art is consistent.
+function sharedPoseScale(frames){
+ const maxW=Math.max(...frames.map(frame=>frame.width));
+ const maxH=Math.max(...frames.map(frame=>frame.height));
+ return Math.min(168/maxW,174/maxH);
+}
+function packPoseStrip(frames,scale){
  const cell=192,out=document.createElement('canvas');out.width=frames.length*cell;out.height=cell;
  const c=out.getContext('2d');
  frames.forEach((frame,i)=>{
-  const scale=Math.min(168/frame.width,174/frame.height),dw=frame.width*scale,dh=frame.height*scale;
+  const dw=frame.width*scale,dh=frame.height*scale;
   c.drawImage(frame,i*cell+(cell-dw)/2,180-dh,dw,dh);
  });
  return out;
 }
 function packDyeMakerAtlas(frames){
  const cell=192,out=document.createElement('canvas');out.width=cell*4;out.height=cell*4;
- const c=out.getContext('2d'),meta=[];
+ const c=out.getContext('2d'),meta=[],scale=sharedPoseScale(frames);
  frames.forEach((frame,i)=>{
-  const col=i%4,row=Math.floor(i/4),scale=Math.min(168/frame.width,174/frame.height),dw=frame.width*scale,dh=frame.height*scale;
+  const col=i%4,row=Math.floor(i/4),dw=frame.width*scale,dh=frame.height*scale;
   const x=col*cell+(cell-dw)/2,y=row*cell+180-dh;c.drawImage(frame,x,y,dw,dh);
   meta.push({x:col*cell,y:row*cell,w:cell,h:cell});
  });
  return {atlas:out,meta};
 }
 baseWorkerSheet.onload=()=>{
- const poses=extractGridPoseCanvases(baseWorkerSheet);
- setCanvasImage(workerWalk,packPoseStrip(poses.slice(0,4)));
- setCanvasImage(workerRun,packPoseStrip(poses.slice(4,8)));
- setCanvasImage(workerIdle,packPoseStrip([poses[8]]));
- setCanvasImage(workerPick,packPoseStrip([poses[9],poses[10]]));
- setCanvasImage(workerCarryIdle,packPoseStrip([poses[11]]));
- setCanvasImage(workerToss,packPoseStrip([poses[11]]));
- setCanvasImage(workerCarry,packPoseStrip(poses.slice(12,16)));
+ const poses=extractGridPoseCanvases(baseWorkerSheet),scale=sharedPoseScale(poses);
+ setCanvasImage(workerWalk,packPoseStrip(poses.slice(0,4),scale));
+ setCanvasImage(workerRun,packPoseStrip(poses.slice(4,8),scale));
+ setCanvasImage(workerIdle,packPoseStrip([poses[8]],scale));
+ setCanvasImage(workerPick,packPoseStrip([poses[9],poses[10]],scale));
+ setCanvasImage(workerCarryIdle,packPoseStrip([poses[11]],scale));
+ setCanvasImage(workerToss,packPoseStrip([poses[11]],scale));
+ setCanvasImage(workerCarry,packPoseStrip(poses.slice(12,16),scale));
 };
 let dyeMakerAtlas=null,dyeMakerFrameMeta=[];
 function keyMagentaSheet(img){const cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;const cx=cv.getContext('2d',{willReadFrequently:true});cx.drawImage(img,0,0);const im=cx.getImageData(0,0,cv.width,cv.height),d=im.data;for(let y=0;y<cv.height;y++)for(let x=0;x<cv.width;x++){const i=(y*cv.width+x)*4,r=d[i],g=d[i+1],b=d[i+2];if(r>175&&b>145&&g<90&&r-g>75&&b-g>65)d[i+3]=0;}cx.putImageData(im,0,0);return cv}
