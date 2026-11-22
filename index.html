@@ -557,7 +557,15 @@ function drawWorker(w){
  const picking=w.state==='picking',drinking=w.state==='drinking',toDyeVat=w.state==='toDyeVat';
  const moving=w.state==='toFlower'||w.state==='toLauncher'||toDyeVat;
  const running=w.state==='toLauncher'||toDyeVat||(w.state==='toFlower'&&w.target&&dist(w,w.target)>300);
- const sheet=drinking?(workerDrinkSequence||workerIdle):(toDyeVat?(workerDrinkWalk||workerRun):(w.state==='tossing'?(workerToss.complete&&workerToss.naturalWidth?workerToss:workerCarry):(picking?workerPick:(w.state==='preToss'&&w.carry?workerCarryIdle:(w.state==='toLauncher'&&w.carry?workerCarry:(running?workerRun:(moving?workerWalk:workerIdle))))));
+ let sheet=workerIdle;
+ if(drinking)sheet=workerDrinkSequence||workerIdle;
+ else if(toDyeVat)sheet=workerDrinkWalk||workerRun;
+ else if(w.state==='tossing')sheet=workerToss.complete&&workerToss.naturalWidth?workerToss:workerCarry;
+ else if(picking)sheet=workerPick;
+ else if(w.state==='preToss'&&w.carry)sheet=workerCarryIdle;
+ else if(w.state==='toLauncher'&&w.carry)sheet=workerCarry;
+ else if(running)sheet=workerRun;
+ else if(moving)sheet=workerWalk;
  // Use only individually isolated frames from the new source sheet.
  if(!sheet.complete||!sheet.naturalWidth){ctx.restore();return}
  const FRAME_W=192,FRAME_H=192;
