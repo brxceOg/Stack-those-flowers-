@@ -28,6 +28,7 @@ Preserve both original files unchanged. All production sprite assets must be der
 - Carry a clearly visible flower while returning to the launcher.
 - Keep the worker's feet aligned to a stable ground baseline across every frame.
 - Never stretch individual frames to fit; preserve original aspect ratio.
+- In-world worker rendering uses a smaller 58×58 square draw size for the 192×192 transparent frame canvas; scale width and height uniformly and keep the feet on the same ground baseline.
 
 ## Flowers and world
 - Use the supplied daisies, tulips, sunflowers, pink flowers, growth stages, and loose petals.
