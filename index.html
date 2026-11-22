@@ -48,8 +48,8 @@ const W=2600,H=1900,center={x:W/2,y:H/2};
 let dpr=1,viewW=0,viewH=0,camera={x:center.x,y:center.y,zoom:.78},placing=false,menuOpen=false;
 let totalFlowers=10,totalDelivered=0,workers=[],houses=[],flowers=[],particles=[],launched=[],last=performance.now(),toastTimer=0,saveClock=0;
 const SAVE_KEY='stackThoseFlowersSaveV1';
-const atlas=new Image();atlas.src='IMG_1369.jpeg';
-const pileAtlas=new Image();pileAtlas.src='IMG_1370.jpeg';
+const atlas=new Image();atlas.src='assets/flower-atlas.png';
+const pileAtlas=new Image();pileAtlas.src='assets/flower-pile-atlas.png';
 let atlasReady=false;atlas.onload=()=>{atlasReady=true}; 
 function resize(){dpr=Math.min(devicePixelRatio||1,2);viewW=innerWidth;viewH=innerHeight;canvas.width=Math.round(viewW*dpr);canvas.height=Math.round(viewH*dpr);ctx.setTransform(dpr,0,0,dpr,0,0)}
 addEventListener('resize',resize);resize();
