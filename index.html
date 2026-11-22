@@ -584,12 +584,9 @@ function drawWorker(w){
   spriteCtx.translate(64,64);spriteCtx.rotate(-.28);spriteCtx.fillStyle=shine;spriteCtx.fillRect(-82,-82,164,164);spriteCtx.restore();
   ctx.drawImage(spriteCanvas,-64,-64);
  }
- // Keep the picked flower visibly nestled in the worker's hands throughout
- // the carrying walk/run and stationary launcher wind-up poses.
- if(w.carry&&(w.state==='toLauncher'||w.state==='preToss')&&atlasReady){
-  const flowerX=11*CHARACTER_DISPLAY_SCALE,flowerY=-43*CHARACTER_DISPLAY_SCALE,flowerW=18*CHARACTER_DISPLAY_SCALE,flowerH=18*CHARACTER_DISPLAY_SCALE;
-  const flowerSX=FLOWER_SOURCE_X[w.carry]??0;
-  ctx.drawImage(atlas,flowerSX,0,FLOWER_FRAME,FLOWER_FRAME,flowerX,flowerY,flowerW,flowerH);
+ // Use the same hand-relative flower placement and dimensions as Dye Makers.
+ if(w.carry&&(w.state==='toLauncher'||w.state==='preToss')){
+  drawHeldFlower(characterSize,characterSize,w.carry);
  }
  ctx.restore()
 }
@@ -634,6 +631,14 @@ function assignFlower(w){
  // Reserve synchronously at selection time so another worker cannot claim it.
  target.reservedBy=w.id;w.target=target;w.state='toFlower';return true;
 }
+ function drawHeldFlower(characterWidth,characterHeight,type){
+  if(!type||!atlasReady)return;
+  const flowerSX=FLOWER_SOURCE_X[type]??FLOWER_SOURCE_X.daisy;
+  const flowerScale=CHARACTER_DISPLAY_SCALE,flowerSize=21*flowerScale;
+  const flowerX=characterWidth*.12;
+  const flowerY=-Math.max(24*flowerScale,characterHeight*.62);
+  ctx.drawImage(atlas,flowerSX,0,FLOWER_FRAME,FLOWER_FRAME,flowerX,flowerY,flowerSize,flowerSize);
+ }
  function drawDyeMaker(w){
   if(w.state==='inside'||!dyeMakerAtlas)return;
   const running=w.state==='toPile'||w.state==='toTent'||w.state==='exitingTent';
@@ -644,11 +649,7 @@ function assignFlower(w){
   ctx.save();ctx.translate(w.x,w.y);if((w.facing||1)<0)ctx.scale(-1,1);
   ctx.imageSmoothingEnabled=false;
   ctx.drawImage(dyeMakerAtlas,frame.x,frame.y,frame.w,frame.h,-dw/2,-dh,dw,dh);
-  if(w.carry&&w.carryType&&atlasReady){
-   const flowerSX=FLOWER_SOURCE_X[w.carryType]??FLOWER_SOURCE_X.daisy,flowerSize=21*CHARACTER_DISPLAY_SCALE;
-   // Show the same isolated flower artwork used by garden plants and the flower pile.
-   ctx.drawImage(atlas,flowerSX,0,FLOWER_FRAME,FLOWER_FRAME,dw*.12,-Math.max(24*CHARACTER_DISPLAY_SCALE,dh*.62),flowerSize,flowerSize);
-  }
+  if(w.carry&&w.carryType)drawHeldFlower(dw,dh,w.carryType);
   ctx.restore();
  }
  function drawUpgradePop(pop){
