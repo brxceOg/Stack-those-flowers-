@@ -59,3 +59,5 @@ A standalone, mobile-first idle gathering game for iPhone Safari, hosted as a Gi
 - Flowers never spawn or regrow inside a completed planned housing area. When a plot is added, flowers already located within it are moved to unplanned ground while retaining their type and current state; the normal flower count and 8-second regrowth cooldown are unchanged.
 
 - Planned housing areas automatically merge when they touch along an edge or have at most one empty grid tile between them with overlapping span along that edge. The merged area is treated as one continuous housing plot for building and flower-spawn exclusion.
+
+- Tapping a placed Worker House or Campfire opens a small contextual menu beside that structure, with disabled placeholder upgrade actions reserved for future upgrades and a Sell Structure action. Selling continues to show the existing refund confirmation before removing the structure.
