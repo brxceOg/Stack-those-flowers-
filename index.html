@@ -110,7 +110,7 @@ const dyeVatSheet=new Image();dyeVatSheet.src='IMG_1386.jpeg';
 let dyeMakerCanvas=null,dyeTentCanvas=null,dyeVatCanvas=null;
 let dyeMakerRunFrames=[],dyeMakerCarryFrames=[],dyeMakerIdleFrame=null,dyeMakerPickFrame=null,dyeMakerPickFrames=[],dyeMakerCarryIdleFrame=null;
 function setCanvasImage(image,canvas){image.onload=null;image.src=canvas.toDataURL('image/png')}
-function extractGridPoseCanvases(img,rows=4){
+function extractGridPoseCanvases(img,rows=4,trimPadding=3){
  const source=document.createElement('canvas');source.width=img.naturalWidth;source.height=img.naturalHeight;
  const sc=source.getContext('2d',{willReadFrequently:true});sc.drawImage(img,0,0);
  const sw=source.width,sh=source.height,cellW=sw/4,cellH=sh/rows,frames=[];
@@ -171,7 +171,7 @@ function extractGridPoseCanvases(img,rows=4){
   }
   if(rr<l||bb<t)throw new Error('No isolated character found in sheet cell '+row+','+col);
   // Tight transparent cutout with a small safety margin; preserve source pixels.
-  l=Math.max(0,l-3);t=Math.max(0,t-3);rr=Math.min(w-1,rr+3);bb=Math.min(h-1,bb+3);
+  l=Math.max(0,l-trimPadding);t=Math.max(0,t-trimPadding);rr=Math.min(w-1,rr+trimPadding);bb=Math.min(h-1,bb+trimPadding);
   const cut=document.createElement('canvas');cut.width=rr-l+1;cut.height=bb-t+1;
   const ci=cut.getContext('2d'),out=ci.createImageData(cut.width,cut.height);
   for(let yy=0;yy<cut.height;yy++)for(let xx=0;xx<cut.width;xx++){
@@ -203,6 +203,13 @@ function packPoseStrip(frames,scale){
  });
  return out;
 }
+function packDrinkPoseStrip(frames){
+ const cell=208,maxWidth=Math.max(...frames.map(frame=>frame.width)),maxHeight=Math.max(...frames.map(frame=>frame.height));
+ const scale=Math.min(190/maxWidth,190/maxHeight),out=document.createElement('canvas');out.width=frames.length*cell;out.height=cell;
+ const c=out.getContext('2d');
+ frames.forEach((frame,i)=>{const dw=frame.width*scale,dh=frame.height*scale;c.drawImage(frame,i*cell+(cell-dw)/2,200-dh,dw,dh)});
+ return out;
+}
 function packDyeMakerAtlas(frames){
  const cell=192,out=document.createElement('canvas');out.width=cell*4;out.height=cell*4;
  const c=out.getContext('2d'),meta=[],scale=sharedPoseScale(frames);
@@ -228,10 +235,10 @@ function keyMagentaSheet(img){const cv=document.createElement('canvas');cv.width
 workerDrinkSheet.onload=()=>{
  // IMG_1395 is used only for its lower-row four-frame pick-up-and-drink sequence.
  // Vat approach movement continues to use the worker's existing walk/run sheets.
- const poses=extractGridPoseCanvases(workerDrinkSheet,2);
+ const poses=extractGridPoseCanvases(workerDrinkSheet,2,10);
  const drinkFrames=poses.slice(4,8);
- const scale=sharedPoseScale(drinkFrames);
- setCanvasImage(workerDrinkSequence,packPoseStrip(drinkFrames,scale));
+ 
+ setCanvasImage(workerDrinkSequence,packDrinkPoseStrip(drinkFrames));
 };
 dyeMakerSheet.onload=()=>{
  const poses=extractGridPoseCanvases(dyeMakerSheet),packed=packDyeMakerAtlas(poses);
@@ -568,7 +575,7 @@ function drawWorker(w){
  else if(moving)sheet=workerWalk;
  // Use only individually isolated frames from the new source sheet.
  if(!sheet.complete||!sheet.naturalWidth){ctx.restore();return}
- const FRAME_W=192,FRAME_H=192;
+ const FRAME_W=drinking?208:192,FRAME_H=drinking?208:192;
  // Run and walk use their own four-frame cycles. A consistent cadence
  // avoids abrupt pose changes and keeps the run from looking like a sped-up walk.
  const poseSheet=sheet;
@@ -713,11 +720,12 @@ function assignFlower(w){
  saveClock+=dt;if(saveClock>=2.5){saveClock=0;saveGame()}
  for(const f of flowers){if(f.state==='picked'&&f.respawn>0){f.respawn-=dt;if(f.respawn<=0){f.state='growing';f.respawn=0;delete f.reservedBy}}}
  for(const w of workers){
-  if(w.dyeBuffTimer>0)w.dyeBuffTimer=Math.max(0,w.dyeBuffTimer-dt);
+  if(w.dyeBuffDelay>0){w.dyeBuffDelay=Math.max(0,w.dyeBuffDelay-dt);if(w.dyeBuffDelay===0){w.dyeBuffTimer=90;saveGame()}}
+   if(w.dyeBuffTimer>0)w.dyeBuffTimer=Math.max(0,w.dyeBuffTimer-dt);
   if((w.state==='idle'||w.state==='search'||w.state==='toFlower')&&dyeVats.length&&Math.random()<.02*dt){
    const claimed=workers.filter(other=>other!==w&&other.drinkVat).map(other=>other.drinkVat);
    const vat=dyeVats.filter(v=>!claimed.includes(v)).sort((a,b)=>dist(w,a)-dist(w,b))[0];
-   if(vat){if(w.state==='toFlower')releaseFlowerReservation(w);w.drinkVat=vat;w.state='toDyeVat';w.target={x:vat.x,y:vat.y+16};w.anim=0}
+   if(vat){if(w.state==='toFlower')releaseFlowerReservation(w);w.drinkVat=vat;w.state='toDyeVat';w.target={x:vat.x-22,y:vat.y+8};w.anim=0}
   }
   if(w.state==='toDyeVat'){
    if(!w.drinkVat||!dyeVats.includes(w.drinkVat)){w.drinkVat=null;w.target=null;w.state='search';w.anim=0}
@@ -728,7 +736,7 @@ function assignFlower(w){
   }
   else if(w.state==='drinking'){
    w.anim+=dt;w.timer-=dt;
-   if(w.timer<=0){w.drinkVat=null;w.dyeBuffTimer=90;w.state='search';w.anim=0;saveGame()}
+   if(w.timer<=0){emitRainbowBurst(w.x,w.y-30);w.drinkVat=null;w.dyeBuffDelay=.28;w.state='search';w.anim=0;saveGame()}
   }
   else {
   if(w.state==='idle'||w.state==='search')assignFlower(w);
