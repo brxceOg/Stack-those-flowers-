@@ -6,6 +6,7 @@ on:
       - "IMG_1369.jpeg"
       - "IMG_1370.jpeg"
       - "IMG_1371.jpeg"
+      - "IMG_1372.jpeg"
       - "scripts/extract_transparency.py"
       - "scripts/extract_worker_sheet.py"
       - ".github/workflows/extract-assets.yml"
