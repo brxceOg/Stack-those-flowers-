@@ -14,6 +14,7 @@ on:
       - "IMG_1380.jpeg"
       - "scripts/extract_transparency.py"
       - "scripts/extract_worker_sheet.py"
+      - "scripts/matte_removal.py"
       - "scripts/extract_flower_launcher.py"
       - "scripts/extract_worker_toss.py"
       - "scripts/extract_new_flowers.py"
