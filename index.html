@@ -165,9 +165,12 @@ function drawWorld(){
 }
 function drawTossedFlower(t){
  const p=Math.min(1,t.time/t.duration),x=t.x+(t.tx-t.x)*p,y=t.y+(t.ty-t.y)*p-Math.sin(p*Math.PI)*42;
- ctx.save();ctx.translate(x,y);ctx.rotate(p*5);ctx.fillStyle=t.color;
- for(let k=0;k<6;k++){ctx.beginPath();ctx.ellipse(Math.cos(k*Math.PI/3)*5,Math.sin(k*Math.PI/3)*5,4,6,k*Math.PI/3,0,Math.PI*2);ctx.fill()}
- ctx.fillStyle='#f4c84d';ctx.beginPath();ctx.arc(0,0,3.2,0,Math.PI*2);ctx.fill();ctx.restore();
+ // Use the same isolated cutout as the flower the worker collected.
+ // Sprite atlas order: daisy, tulip, sunflower, pink.
+ const sx=({daisy:0,tulip:65,sunflower:130,pink:195})[t.type]??0;
+ ctx.save();ctx.translate(x,y);ctx.rotate(p*5);
+ if(atlasReady)ctx.drawImage(atlas,sx,0,65,90,-16,-21,32,42);
+ ctx.restore();
 }
 function moveToward(obj,target,speed,dt){const dx=target.x-obj.x,dy=target.y-obj.y,d=Math.hypot(dx,dy);if(Math.abs(dx)>0.01)obj.facing=dx<0?-1:1;if(d<speed*dt+3){obj.x=target.x;obj.y=target.y;return true}obj.x+=dx/d*speed*dt;obj.y+=dy/d*speed*dt;obj.anim+=dt;return false}
 function releaseFlowerReservation(w){
@@ -217,7 +220,7 @@ function update(dt){
     w.timer-=dt;
     if(w.timer<=0){
      w.state='tossing';w.timer=.48;w.anim=0;
-     tossedFlowers.push({x:w.x,y:w.y-31,tx:launcher.x,ty:launcher.y-34,time:0,duration:.42,color:({daisy:'#fff0dc',tulip:'#e95363',sunflower:'#f3bd39',pink:'#ed83b4'})[w.carry]||'#fff0dc'});
+     tossedFlowers.push({x:w.x,y:w.y-31,tx:launcher.x,ty:launcher.y-34,time:0,duration:.42,type:w.carry||'daisy'});
     }
    }
    else if(w.state==='tossing'){
