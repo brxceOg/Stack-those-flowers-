@@ -290,7 +290,13 @@ for row_index in range(ROW_COUNT):
 # and the complete crouch/reach/stand flower-picking action.
 walk = extract_row_cells(im, *rows[0])
 run = extract_row_cells(im, *rows[1])
-pick = extract_row_cells(im, *rows[2])
+# The source's third row starts with the two actual crouch-and-grab poses.
+# The remaining poses in that row are upright travel/transition artwork and
+# must not be included in the flower-picking loop.
+pick_row = extract_row_cells(im, *rows[2])
+pick = pick_row[:2]
+if len(pick) != 2:
+    raise RuntimeError("Picking sequence must contain exactly the two crouch/grab poses")
 write_sheet(walk[3:], "walk")
 write_sheet(run[2:], "run")
 write_sheet(pick, "pick")
