@@ -48,7 +48,7 @@ const W=2600,H=1900,center={x:W/2,y:H/2};
 let dpr=1,viewW=0,viewH=0,camera={x:center.x,y:center.y,zoom:.78},placing=false,menuOpen=false;
 let totalFlowers=10,totalDelivered=0,workers=[],houses=[],flowers=[],particles=[],launched=[],last=performance.now(),toastTimer=0,saveClock=0,nextWorkerId=1;
 const SAVE_KEY='stackThoseFlowersSaveV1';
-const atlas=new Image();atlas.src='assets/flower-atlas.png';
+const atlas=new Image();atlas.src='assets/flower-sprites.png';
 const pileAtlas=new Image();pileAtlas.src='assets/flower-pile-atlas.png';
 const workerWalk=new Image();workerWalk.src='assets/worker-walk.png';
 const workerRun=new Image();workerRun.src='assets/worker-run.png';
@@ -82,7 +82,7 @@ function drawGround(){
  for(let i=0;i<110;i++){let x=(i*263+80)%W,y=(i*431+120)%H;if(Math.hypot(x-center.x,y-center.y)<240)continue;ctx.fillStyle=i%2?'#729b55':'#b0ca7a';ctx.beginPath();ctx.ellipse(x,y,5,2,rand(-1,1),0,7);ctx.fill()}
 }
 function drawBush(x,y){ctx.fillStyle='#4e8849';ctx.beginPath();ctx.arc(x,y,23,0,7);ctx.fill();ctx.fillStyle='#72a95a';ctx.beginPath();ctx.arc(x-7,y-7,12,0,7);ctx.fill()}
-function drawFlower(f){if(f.state==='picked')return;const sway=Math.sin(performance.now()/520+f.phase)*2;ctx.save();ctx.translate(f.x,f.y);ctx.translate(sway,0);if(atlasReady){const sx={daisy:18,tulip:440,sunflower:720,pink:910}[f.type];const sy=f.type==='daisy'?430:430;ctx.drawImage(atlas,sx,sy,65,90,-22,-43,44,58)}else{ctx.strokeStyle='#347b3c';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(0,18);ctx.lineTo(0,-10);ctx.stroke();ctx.fillStyle=f.type==='tulip'?'#d94c5d':f.type==='pink'?'#e87bb1':f.type==='sunflower'?'#f5b83e':'#fff';for(let i=0;i<7;i++){ctx.beginPath();ctx.arc(Math.cos(i*6.28/7)*9,-14+Math.sin(i*6.28/7)*9,6,0,7);ctx.fill()}ctx.fillStyle='#e6b944';ctx.beginPath();ctx.arc(0,-14,5,0,7);ctx.fill()}ctx.restore()}
+function drawFlower(f){if(f.state==='picked')return;const sway=Math.sin(performance.now()/520+f.phase)*2;ctx.save();ctx.translate(f.x,f.y);ctx.translate(sway,0);if(atlasReady){const sx={daisy:0,tulip:65,sunflower:130,pink:195}[f.type];ctx.drawImage(atlas,sx,0,65,90,-22,-43,44,58)}else{ctx.strokeStyle='#347b3c';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(0,18);ctx.lineTo(0,-10);ctx.stroke();ctx.fillStyle=f.type==='tulip'?'#d94c5d':f.type==='pink'?'#e87bb1':f.type==='sunflower'?'#f5b83e':'#fff';for(let i=0;i<7;i++){ctx.beginPath();ctx.arc(Math.cos(i*6.28/7)*9,-14+Math.sin(i*6.28/7)*9,6,0,7);ctx.fill()}ctx.fillStyle='#e6b944';ctx.beginPath();ctx.arc(0,-14,5,0,7);ctx.fill()}ctx.restore()}
 function drawHouse(h){ctx.save();ctx.translate(h.x,h.y);ctx.fillStyle='#385a39';ctx.beginPath();ctx.ellipse(0,16,35,13,0,0,7);ctx.fill();ctx.fillStyle='#d9b77a';ctx.fillRect(-25,-22,50,40);ctx.fillStyle='#a54e42';ctx.beginPath();ctx.moveTo(-33,-20);ctx.lineTo(0,-48);ctx.lineTo(33,-20);ctx.closePath();ctx.fill();ctx.fillStyle='#f1d89c';ctx.fillRect(-7,-7,14,25);ctx.fillStyle='#7eae9b';ctx.fillRect(-19,-14,10,11);ctx.fillRect(9,-14,10,11);ctx.restore()}
 function drawLauncher(){ctx.save();ctx.translate(launcher.x,launcher.y);ctx.fillStyle='#5b8247';ctx.beginPath();ctx.ellipse(0,50,125,48,0,0,7);ctx.fill();ctx.fillStyle='#7d5635';ctx.fillRect(-65,-24,130,74);ctx.fillStyle='#c88a4c';ctx.fillRect(-55,-44,110,25);ctx.fillStyle='#e6c078';ctx.beginPath();ctx.moveTo(-70,-43);ctx.lineTo(0,-100);ctx.lineTo(70,-43);ctx.closePath();ctx.fill();ctx.fillStyle='#395c40';ctx.fillRect(-31,-5,62,34);ctx.fillStyle='#f7d66e';ctx.beginPath();ctx.arc(0,-22,16,0,7);ctx.fill();ctx.fillStyle='#fff0b5';ctx.beginPath();ctx.arc(0,-22,8,0,7);ctx.fill();ctx.fillStyle='#6a452f';ctx.fillRect(58,-4,24,9);ctx.fillRect(76,-13,9,27);ctx.restore()}
 function drawPile(){const x=launcher.x+170,y=launcher.y+52;const n=Math.min(totalDelivered,80),levels=Math.max(1,Math.ceil(Math.sqrt(n)));ctx.save();ctx.translate(x,y);ctx.fillStyle='#527c43';ctx.beginPath();ctx.ellipse(0,25,105,27,0,0,7);ctx.fill();for(let i=0;i<n;i++){const row=Math.floor(i/levels),col=i%levels;const px=(col-(Math.min(levels,n-row*levels)-1)/2)*24,py=-row*12;const c=['#fff1e0','#ec6b91','#e84f5d','#f3b735'][i%4];ctx.fillStyle='#367747';ctx.fillRect(px-3,py+2,6,14);ctx.fillStyle=c;ctx.beginPath();ctx.arc(px,py,8,0,7);ctx.fill();ctx.fillStyle='#ffdf79';ctx.beginPath();ctx.arc(px,py,3,0,7);ctx.fill()}ctx.restore()}
@@ -108,8 +108,8 @@ function drawWorker(w){
   // Draw the exact flower variety the worker harvested, using the same atlas
   // frame and source crop as flowers growing in the world.
   if(atlasReady){
-   const flowerX={daisy:18,tulip:440,sunflower:720,pink:910}[w.carry]??18;
-   ctx.drawImage(atlas,flowerX,430,65,90,12,-51,24,34);
+   const flowerX={daisy:0,tulip:65,sunflower:130,pink:195}[w.carry]??0;
+   ctx.drawImage(atlas,flowerX,0,65,90,12,-51,24,34);
   }else{
    // Keep the held flower recognizable even before the atlas finishes loading.
    ctx.strokeStyle='#3f8a43';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(23,-23);ctx.lineTo(23,-39);ctx.stroke();
