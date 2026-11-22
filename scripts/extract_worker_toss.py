@@ -33,6 +33,19 @@ def remove_connected_magenta(image):
             if 0<=ny<h and 0<=nx<w:
                 add(ny,nx)
     rgba[seen] = (0,0,0,0)
+    # Defringe antialiased edge pixels directly adjacent to removed magenta.
+    alpha = rgba[:,:,3] > 0
+    edge = np.zeros((h,w), dtype=bool)
+    edge[1:,:] |= ~alpha[:-1,:]
+    edge[:-1,:] |= ~alpha[1:,:]
+    edge[:,1:] |= ~alpha[:,:-1]
+    edge[:,:-1] |= ~alpha[:,1:]
+    edge &= alpha
+    spill = np.maximum(0, np.minimum(r,b) - g).astype(np.float32)
+    for channel in (0,2):
+        values = rgba[:,:,channel].astype(np.float32)
+        values[edge] = np.maximum(0, values[edge] - spill[edge]*0.78)
+        rgba[:,:,channel] = values.astype(np.uint8)
     return Image.fromarray(rgba, "RGBA")
 
 if not SOURCE.is_file():
