@@ -94,12 +94,13 @@ function drawWorker(w){
  const sheet=picking?workerPick:(running?workerRun:workerWalk);
  // Use only individually isolated frames from the new source sheet.
  if(!sheet.complete||!sheet.naturalWidth){ctx.restore();return}
- const count=Math.max(1,Math.floor(sheet.naturalWidth/128));
+ const FRAME_W=160,FRAME_H=208;
+ const count=Math.max(1,Math.floor(sheet.naturalWidth/FRAME_W));
  const frame=picking?(Math.floor(w.anim*12)%count):(moving?(Math.floor(w.anim*(running?10:8))%count):0);
  const bob=moving?Math.sin(w.anim*(running?15:10))*1.2:0;
  ctx.translate(0,bob);
  ctx.imageSmoothingEnabled=false;
- ctx.drawImage(sheet,frame*160,0,160,208,-25,-62,50,62);
+ ctx.drawImage(sheet,frame*FRAME_W,0,FRAME_W,FRAME_H,-25,-62,50,62);
  if(w.carry){
   ctx.fillStyle=w.carry==='pink'?'#eb78b1':w.carry==='tulip'?'#df4e60':w.carry==='sunflower'?'#f4bb39':'#fff';
   ctx.beginPath();ctx.arc(20,-35,8,0,7);ctx.fill();
