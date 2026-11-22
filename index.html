@@ -473,8 +473,8 @@ function assignFlower(w){
  // Reserve synchronously at selection time so another worker cannot claim it.
  target.reservedBy=w.id;w.target=target;w.state='toFlower';return true;
 }
-const DYE_MAKER_RUN_FRAMES=[{x:74,y:0},{x:420,y:0},{x:74,y:184},{x:420,y:184}];
- function drawDyeMaker(w){if(!dyeMakerCanvas||w.state==='inside')return;const running=w.state==='toPile'||w.state==='toTent'||w.state==='exitingTent',frame=running?Math.floor(w.anim*10)%DYE_MAKER_RUN_FRAMES.length:0,runFrame=DYE_MAKER_RUN_FRAMES[frame];const sx=w.state==='pickingPile'?485:running?runFrame.x:74,sy=w.state==='pickingPile'?368:running?runFrame.y:184,sw=w.state==='pickingPile'?180:198,sh=184;ctx.save();ctx.translate(w.x,w.y);if((w.facing||1)<0)ctx.scale(-1,1);ctx.imageSmoothingEnabled=true;ctx.drawImage(dyeMakerCanvas,sx,sy,sw,sh,-31,-57,62,58);if(w.carry){ctx.fillStyle='#d94b8b';ctx.beginPath();ctx.arc(17,-25,4,0,Math.PI*2);ctx.fill()}ctx.restore()}
+const DYE_MAKER_RUN_FRAMES=[{x:48,y:0},{x:394,y:0},{x:48,y:184},{x:394,y:184}];
+ function drawDyeMaker(w){if(!dyeMakerCanvas||w.state==='inside')return;const running=w.state==='toPile'||w.state==='toTent'||w.state==='exitingTent',frame=running?Math.floor(w.anim*10)%DYE_MAKER_RUN_FRAMES.length:0,runFrame=DYE_MAKER_RUN_FRAMES[frame];const sx=w.state==='pickingPile'?485:running?runFrame.x:48,sy=w.state==='pickingPile'?368:running?runFrame.y:184,sw=w.state==='pickingPile'?180:198,sh=184;ctx.save();ctx.translate(w.x,w.y);if((w.facing||1)<0)ctx.scale(-1,1);ctx.imageSmoothingEnabled=true;ctx.drawImage(dyeMakerCanvas,sx,sy,sw,sh,-31,-57,62,58);if(w.carry){ctx.fillStyle='#d94b8b';ctx.beginPath();ctx.arc(17,-25,4,0,Math.PI*2);ctx.fill()}ctx.restore()}
  function drawUpgradePop(pop){
   const progress=Math.min(1,pop.time/pop.duration),fade=1-progress;
   const x=pop.x+18+progress*16,y=pop.y-49-progress*34;
