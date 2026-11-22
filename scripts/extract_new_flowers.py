@@ -84,8 +84,8 @@ def main():
         "tulip": (48, 294, 166, 435),
         "rose": (248, 292, 370, 435),
     }
-    if sheet.width < 399 or sheet.height < 447:
-        raise RuntimeError(f"Unexpected flower source dimensions: {sheet.size}; expected at least 399x447")
+    if sheet.width < 399 or sheet.height < 437:
+        raise RuntimeError(f"Unexpected flower source dimensions: {sheet.size}; expected at least 399x437")
     atlas = Image.new("RGBA", (FRAME*len(NAMES), FRAME), (0,0,0,0))
     for i, name in enumerate(NAMES):
         cell = clean_cell(sheet.crop(crop_boxes[name]))
