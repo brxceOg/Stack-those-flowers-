@@ -97,8 +97,8 @@ for y0,y1 in bands:
     rows.append(row)
 counts=[len(r) for r in rows]
 print(f"Detected row frame counts: {counts}; source size: {im.size}")
-if counts != [10,9,10]:
-    raise RuntimeError(f"Unexpected sprite layout {counts}; expected [10, 9, 10]. Refusing unsafe extraction.")
+if counts != [10,10,10]:
+    raise RuntimeError(f"Unexpected sprite layout {counts}; expected [10, 10, 10]. Refusing unsafe extraction.")
 # Row 1 and row 2 begin with crouch/standing setup poses; retain only active travel poses.
 build_sheet(im,rows[0][3:],"walk")
 build_sheet(im,rows[1][2:],"run")
