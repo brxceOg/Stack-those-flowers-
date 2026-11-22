@@ -72,3 +72,5 @@ Preserve both original files unchanged. All production sprite assets must be der
 - Planned housing plots automatically join into one continuous dirt division when they share an edge or are separated by at most one empty grid tile, with overlapping span along that edge. This keeps nearby plots visually connected without joining diagonally separated plots.
 
 - Tapping a placed worker house or campfire opens a compact contextual action menu immediately beside it. The menu reserves disabled upgrade slots for future upgrades and includes the structure's sell action; selling still requires explicit confirmation.
+
+- The contextual upgrade menu is category-wide, not per-building: Worker House upgrades apply to every Worker House, and Campfire upgrades apply to every Campfire. Selecting any one structure opens the available upgrade list for its category; future purchases will affect all structures of that type.
