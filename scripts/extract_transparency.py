@@ -61,3 +61,50 @@ def remove_connected_paper(src, dst):
 
 remove_connected_paper("IMG_1369.jpeg", OUT / "flower-atlas.png")
 remove_connected_paper("IMG_1370.jpeg", OUT / "flower-pile-atlas.png")
+
+def extract_worker_cycles():
+    # The first row of IMG_1369 contains five walk poses followed by five
+    # run poses. Split by fixed source cells first, then trim each cell to
+    # its own alpha bounds so no adjacent pose can bleed into a frame.
+    atlas = Image.open(OUT / "flower-atlas.png").convert("RGBA")
+    width, height = atlas.size
+    cols = 10
+    cell_w = width / cols
+    y0, y1 = 22, 174
+    frame_w, frame_h = 128, 160
+    baseline = 154
+
+    cycles = {"walk": [], "run": []}
+    for i in range(cols):
+        left = round(i * cell_w)
+        right = round((i + 1) * cell_w)
+        cell = atlas.crop((left, y0, right, y1))
+        alpha = cell.getchannel("A")
+        bbox = alpha.getbbox()
+        if bbox is None:
+            raise RuntimeError(f"Worker frame {i} is empty")
+        sprite = cell.crop(bbox)
+        if sprite.width > frame_w - 8 or sprite.height > frame_h - 8:
+            raise RuntimeError(f"Worker frame {i} exceeds safe canvas: {sprite.size}")
+        frame = Image.new("RGBA", (frame_w, frame_h), (0, 0, 0, 0))
+        px = (frame_w - sprite.width) // 2
+        py = baseline - sprite.height
+        frame.alpha_composite(sprite, (px, py))
+        cycles["walk" if i < 5 else "run"].append(frame)
+
+    for name, frames in cycles.items():
+        sheet = Image.new("RGBA", (frame_w * len(frames), frame_h), (0, 0, 0, 0))
+        for i, frame in enumerate(frames):
+            sheet.alpha_composite(frame, (i * frame_w, 0))
+        path = OUT / f"worker-{name}.png"
+        sheet.save(path, optimize=True)
+        # Verify every frame has transparent canvas and opaque art, and no
+        # frame's alpha bounds spill into its neighboring cell.
+        for i in range(len(frames)):
+            frame = sheet.crop((i * frame_w, 0, (i + 1) * frame_w, frame_h))
+            a = np.asarray(frame.getchannel("A"))
+            if not np.any(a == 0) or not np.any(a > 0):
+                raise RuntimeError(f"Invalid alpha in {name} frame {i}")
+        print(f"{path.relative_to(ROOT)}: {len(frames)} isolated {name} frames, {frame_w}x{frame_h} each")
+
+extract_worker_cycles()
