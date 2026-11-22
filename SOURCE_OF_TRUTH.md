@@ -28,7 +28,7 @@ A standalone, mobile-first idle gathering game for iPhone Safari, hosted as a Gi
 - Keep worker state transitions explicit: search → toFlower → toLauncher → deposit → search.
 - Keep all original JPEG source sheets intact. Any future extracted assets must be derived files, never destructive edits to the source art.
 - **All extracted production sprites must be PNGs with real transparency (alpha channel); neither white nor magenta sheet backgrounds or color mattes/halos may remain visible.**
-- Remove only the edge-connected sheet background using a color-aware matte-removal method. The cartoon worker source uses vivid magenta; preserve the character colors and dark outlines while un-matting antialiased magenta edges.
+- Remove only the edge-connected sheet background using a color-aware matte-removal method. The cartoon worker source uses vivid magenta; discard magenta-contaminated edge pixels while preserving the original character colors and dark outlines.
 - Extract and inspect each frame individually before building a sprite sheet. Preserve the full silhouette, all edge pixels, original aspect ratio, and consistent frame canvas/baseline.
 - Validate each PNG by compositing it over dark and contrasting backgrounds and checking that the background is transparent while intentional white artwork remains intact.
 - Persist player progress in localStorage when save/load is added; version the save schema.
