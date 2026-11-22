@@ -155,7 +155,7 @@ function drawWorker(w){
  // Keep the picked flower visibly nestled in the worker's hands throughout
  // the carrying walk/run and stationary launcher wind-up poses.
  if(w.carry&&(w.state==='toLauncher'||w.state==='preToss')&&atlasReady){
-  const flowerX=13,flowerY=-43,flowerW=13,flowerH=18;
+  const flowerX=11,flowerY=-46,flowerW=17,flowerH=23;
   const flowerSX=({daisy:0,tulip:65,sunflower:130,pink:195})[w.carry]??0;
   ctx.drawImage(atlas,flowerSX,0,65,90,flowerX,flowerY,flowerW,flowerH);
  }
