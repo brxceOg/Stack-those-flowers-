@@ -492,6 +492,7 @@ function drawPile(){
  }
  ctx.restore();
 }
+const CHARACTER_DISPLAY_SCALE=.85; // Shared display-only reduction for every character type.
 function drawWorker(w){
  ctx.save();ctx.translate(w.x,w.y);
  const boosted=isWorkerBoosted(w);
@@ -514,7 +515,7 @@ function drawWorker(w){
  const bob=moving?Math.sin(w.anim*(running?Math.PI*2*2.25:Math.PI*2*1.6))*(running?1.15:.7):0;
  ctx.translate(0,bob);
  ctx.imageSmoothingEnabled=true;
- // Render each worker at a larger 76×76 world size. Keep the square source
+ // Render every worker at the shared reduced display scale. Keep the square source
  // frame proportional and anchor its feet to the shared ground baseline.
  // Draw boosted workers to a transparent offscreen layer so the animated shine
  // is composited onto character pixels only, never the garden behind them.
@@ -526,11 +527,12 @@ function drawWorker(w){
  if(w.state==='tossing'){
   // Toss art is stored in a wider 256x192 canvas so its raised-arm pose
   // can match the other animations' 58px character height without distortion.
-  const tossH=78;
+  const tossH=78*CHARACTER_DISPLAY_SCALE;
   const tossW=tossH*(sheet.naturalWidth/sheet.naturalHeight);
   spriteCtx.drawImage(sheet,-tossW/2,-tossH,tossW,tossH);
  }else{
-  spriteCtx.drawImage(poseSheet,frame*FRAME_W,0,FRAME_W,FRAME_H,-38,-76,76,76);
+  const characterSize=76*CHARACTER_DISPLAY_SCALE;
+  spriteCtx.drawImage(poseSheet,frame*FRAME_W,0,FRAME_W,FRAME_H,-characterSize/2,-characterSize,characterSize,characterSize);
  }
  if(boosted){
   spriteCtx.restore();
@@ -548,7 +550,7 @@ function drawWorker(w){
  // Keep the picked flower visibly nestled in the worker's hands throughout
  // the carrying walk/run and stationary launcher wind-up poses.
  if(w.carry&&(w.state==='toLauncher'||w.state==='preToss')&&atlasReady){
-  const flowerX=11,flowerY=-43,flowerW=18,flowerH=18;
+  const flowerX=11*CHARACTER_DISPLAY_SCALE,flowerY=-43*CHARACTER_DISPLAY_SCALE,flowerW=18*CHARACTER_DISPLAY_SCALE,flowerH=18*CHARACTER_DISPLAY_SCALE;
   const flowerSX=FLOWER_SOURCE_X[w.carry]??0;
   ctx.drawImage(atlas,flowerSX,0,FLOWER_FRAME,FLOWER_FRAME,flowerX,flowerY,flowerW,flowerH);
  }
@@ -601,11 +603,11 @@ function assignFlower(w){
   const movingFrames=running&&w.carry&&dyeMakerCarryFrames.length?dyeMakerCarryFrames:dyeMakerRunFrames;
   const frame=running?movingFrames[Math.floor(w.anim*8)%movingFrames.length]:w.state==='pickingPile'?dyeMakerPickFrames[Math.floor(w.anim*2.5)%dyeMakerPickFrames.length]:dyeMakerIdleFrame;
   if(!frame||!frame.w||!frame.h)return;
-  const scale=Math.min(82/frame.w,76/frame.h),dw=frame.w*scale,dh=frame.h*scale;
+  const scale=Math.min(82/frame.w,76/frame.h)*CHARACTER_DISPLAY_SCALE,dw=frame.w*scale,dh=frame.h*scale;
   ctx.save();ctx.translate(w.x,w.y);if((w.facing||1)<0)ctx.scale(-1,1);
   ctx.imageSmoothingEnabled=false;
   ctx.drawImage(dyeMakerAtlas,frame.x,frame.y,frame.w,frame.h,-dw/2,-dh,dw,dh);
-  if(w.carry){ctx.fillStyle='#d94b8b';ctx.beginPath();ctx.arc(17,-Math.max(20,dh*.52),4,0,Math.PI*2);ctx.fill()}
+  if(w.carry){ctx.fillStyle='#d94b8b';ctx.beginPath();ctx.arc(17*CHARACTER_DISPLAY_SCALE,-Math.max(20*CHARACTER_DISPLAY_SCALE,dh*.52),4*CHARACTER_DISPLAY_SCALE,0,Math.PI*2);ctx.fill()}
   ctx.restore();
  }
  function drawUpgradePop(pop){
