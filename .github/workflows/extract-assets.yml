@@ -11,10 +11,12 @@ on:
       - "IMG_1375.jpeg"
       - "IMG_1378.jpeg"
       - "IMG_1379.jpeg"
+      - "IMG_1380.jpeg"
       - "scripts/extract_transparency.py"
       - "scripts/extract_worker_sheet.py"
       - "scripts/extract_flower_launcher.py"
       - "scripts/extract_worker_toss.py"
+      - "scripts/extract_new_flowers.py"
       - ".github/workflows/extract-assets.yml"
   workflow_dispatch:
 permissions:
@@ -37,11 +39,13 @@ jobs:
         run: python scripts/extract_flower_launcher.py
       - name: Extract isolated worker flower-toss pose
         run: python scripts/extract_worker_toss.py
+      - name: Extract new transparent flower varieties
+        run: python scripts/extract_new_flowers.py
       - name: Commit generated transparent PNG atlases
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add assets/flower-atlas.png assets/flower-pile-atlas.png assets/flower-sprites.png assets/worker-walk.png assets/worker-run.png assets/worker-idle.png assets/worker-pick.png assets/worker-carry.png assets/worker-carry-idle.png assets/worker-frames/*.png assets/flower-launcher-collection.png assets/flower-launcher-charge.png assets/flower-launcher-fire.png assets/flower-launcher-frames/*.png assets/worker-toss.png assets/worker-frames/toss-01.png
+          git add assets/flower-atlas.png assets/flower-pile-atlas.png assets/flower-sprites.png assets/worker-walk.png assets/worker-run.png assets/worker-idle.png assets/worker-pick.png assets/worker-carry.png assets/worker-carry-idle.png assets/worker-frames/*.png assets/flower-launcher-collection.png assets/flower-launcher-charge.png assets/flower-launcher-fire.png assets/flower-launcher-frames/*.png assets/worker-toss.png assets/worker-frames/toss-01.png assets/flower-frames/*.png
           if git diff --cached --quiet; then
             echo "No generated asset changes."
           else
