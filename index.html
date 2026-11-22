@@ -172,6 +172,11 @@ function isWorkerBoosted(w){
  return campfires.some(c=>Math.hypot(c.x-towerX,c.y-towerY)<=CAMPFIRE_RANGE);
 }
 function drawCampfire(c){ctx.save();ctx.translate(c.x,c.y);
+ // Small, soft amber light pool that flickers gently with the fire animation.
+ const glowPulse=.82+Math.sin(campfireClock*5.2+(c.x+c.y)*.013)*.08+Math.sin(campfireClock*8.1+(c.x-c.y)*.009)*.035;
+ const glow=ctx.createRadialGradient(0,-23,3,0,-23,58);
+ glow.addColorStop(0,`rgba(255,190,78,${.25*glowPulse})`);glow.addColorStop(.34,`rgba(255,151,48,${.15*glowPulse})`);glow.addColorStop(.72,`rgba(255,127,35,${.055*glowPulse})`);glow.addColorStop(1,'rgba(255,127,35,0)');
+ ctx.fillStyle=glow;ctx.beginPath();ctx.arc(0,-23,58,0,Math.PI*2);ctx.fill();
  // A compact, ground-level fire: deliberately much smaller than the 96px houses.
  ctx.fillStyle='rgba(42,55,34,.25)';ctx.beginPath();ctx.ellipse(0,-3,23,7,0,0,Math.PI*2);ctx.fill();
  if(campfireAtlas.complete&&campfireAtlas.naturalWidth>=CAMPFIRE_FRAME*CAMPFIRE_FRAME_COUNT&&campfireAtlas.naturalHeight>=CAMPFIRE_FRAME*(CAMPFIRE_ANIMATION_ROW+1)){const frame=Math.floor(campfireClock*CAMPFIRE_FPS)%CAMPFIRE_FRAME_COUNT,sx=frame*CAMPFIRE_FRAME,sy=CAMPFIRE_ANIMATION_ROW*CAMPFIRE_FRAME;ctx.imageSmoothingEnabled=true;ctx.drawImage(campfireAtlas,sx,sy,CAMPFIRE_FRAME,CAMPFIRE_FRAME,-25,-50,50,50)}
