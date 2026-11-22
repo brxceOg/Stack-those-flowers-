@@ -55,3 +55,5 @@ A standalone, mobile-first idle gathering game for iPhone Safari, hosted as a Gi
 
 
 - Every completed planned housing area creates a distinct dirt land patch inside its exact grid footprint, with a subtle soil texture and grassy border to divide it from the surrounding garden. The active planning preview remains translucent blue.
+
+- Flowers never spawn or regrow inside a completed planned housing area. When a plot is added, flowers already located within it are moved to unplanned ground while retaining their type and current state; the normal flower count and 8-second regrowth cooldown are unchanged.
