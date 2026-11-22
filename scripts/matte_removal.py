@@ -36,11 +36,14 @@ def remove_magenta_matte(image):
     alpha[~connected] = 1.0
     alpha[connected & (alpha < 0.055)] = 0.0
     recover = connected & (alpha >= 0.055)
-    # Use the nearest uncontaminated foreground color for the fringe RGB.
-    # This avoids inventing green/pale edge colors when the JPEG matte is
-    # mixed with a dark outline; alpha still carries the antialias coverage.
+    # Keep the extracted edge's original structure, but neutralize the
+    # magenta channel excess on the retained antialias rim. The outline is
+    # intentionally dark; subtracting the same spill from red and blue keeps
+    # its luminance/detail while removing the pink cast.
     out_rgb = rgb.copy()
-    out_rgb[recover] = foreground[recover]
+    spill = np.maximum(0.0, np.minimum(rgb[:, :, 0], rgb[:, :, 2]) - rgb[:, :, 1] - 10.0)
+    out_rgb[recover, 0] = np.maximum(0.0, rgb[recover, 0] - 0.92 * spill[recover])
+    out_rgb[recover, 2] = np.maximum(0.0, rgb[recover, 2] - 0.92 * spill[recover])
     out_rgb[connected & ~recover] = 0
     out = np.dstack((out_rgb, alpha * 255.0)).round().clip(0, 255).astype(np.uint8)
     out[out[:, :, 3] == 0, :3] = 0
