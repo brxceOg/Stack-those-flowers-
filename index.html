@@ -9,6 +9,7 @@
 :root{color-scheme:dark;--ink:#273b2d;--cream:#fff4d8;--gold:#f6c85f;--green:#477a4c;--deep:#213c2b}
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#203b2a;font-family:ui-rounded,"Trebuchet MS",system-ui,sans-serif;color:var(--cream);touch-action:none}
 #game{position:fixed;inset:0;overflow:hidden;background:#8cbd69}
+#crtOverlay{position:absolute;inset:0;z-index:2;pointer-events:none;opacity:.34;background:repeating-linear-gradient(to bottom,rgba(20,30,22,.10) 0px,rgba(20,30,22,.10) 1px,transparent 1px,transparent 4px),repeating-linear-gradient(to right,rgba(255,255,255,.018) 0px,rgba(255,255,255,.018) 1px,transparent 1px,transparent 3px),radial-gradient(ellipse at center,transparent 58%,rgba(13,27,18,.17) 100%);mix-blend-mode:multiply}
 canvas{display:block;width:100%;height:100%;touch-action:none;image-rendering:auto}
 .topbar{position:absolute;z-index:5;top:env(safe-area-inset-top,0px);left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:10px 12px;pointer-events:none}
 .brand,.stat{background:rgba(35,65,43,.94);border:2px solid #a5c779;border-radius:14px;box-shadow:0 3px 0 rgba(0,0,0,.2);padding:7px 11px;text-shadow:1px 2px #1e3926}
@@ -51,6 +52,9 @@ const bloomCanvas=document.createElement('canvas');
 bloomCanvas.id='bloomPost';
 bloomCanvas.style.cssText='position:absolute;inset:0;width:100%;height:100%;pointer-events:none';
 document.getElementById('game').appendChild(bloomCanvas);
+const crtOverlay=document.createElement('div');
+crtOverlay.id='crtOverlay';crtOverlay.setAttribute('aria-hidden','true');
+ document.getElementById('game').appendChild(crtOverlay);
 const gl=bloomCanvas.getContext('webgl',{alpha:true,antialias:false,premultipliedAlpha:false});
 let bloomProgram=null,bloomTexture=null,bloomActive=false;
 if(gl){
