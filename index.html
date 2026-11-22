@@ -49,6 +49,7 @@ let dpr=1,viewW=0,viewH=0,camera={x:center.x,y:center.y,zoom:.78},placing=false,
 let totalFlowers=10,totalDelivered=0,workers=[],houses=[],flowers=[],particles=[],launched=[],tossedFlowers=[],last=performance.now(),toastTimer=0,saveClock=0,nextWorkerId=1;
 const SAVE_KEY='stackThoseFlowersSaveV1';
 const atlas=new Image();atlas.src='assets/flower-sprites.png?v=flower-crops-1122-0739';
+const workerHouse=new Image();workerHouse.src='assets/worker-house.png?v=house-frames-1122';
 const FLOWER_SOURCE_X={sunflower:0,daisy:224,'red-bouquet':448,bluebells:672,tulip:896,rose:1120};
 const FLOWER_TYPES=Object.keys(FLOWER_SOURCE_X);
 const FLOWER_FRAME=224;
@@ -93,7 +94,7 @@ function drawGround(){
 }
 function drawBush(x,y){ctx.fillStyle='#4e8849';ctx.beginPath();ctx.arc(x,y,23,0,7);ctx.fill();ctx.fillStyle='#72a95a';ctx.beginPath();ctx.arc(x-7,y-7,12,0,7);ctx.fill()}
 function drawFlower(f){if(f.state==='picked')return;const sway=Math.sin(performance.now()/520+f.phase)*2;ctx.save();ctx.translate(f.x,f.y);ctx.translate(sway,0);if(atlasReady){const sx=FLOWER_SOURCE_X[f.type]??0;ctx.drawImage(atlas,sx,0,FLOWER_FRAME,FLOWER_FRAME,-22,-44,44,44)}else{ctx.strokeStyle='#347b3c';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(0,18);ctx.lineTo(0,-10);ctx.stroke();ctx.fillStyle=f.type==='tulip'?'#d94c5d':f.type==='rose'?'#e85b57':f.type==='red-bouquet'?'#d94b4b':f.type==='bluebells'?'#667bd7':f.type==='sunflower'?'#f5b83e':'#fff';for(let i=0;i<7;i++){ctx.beginPath();ctx.arc(Math.cos(i*6.28/7)*9,-14+Math.sin(i*6.28/7)*9,6,0,7);ctx.fill()}ctx.fillStyle='#e6b944';ctx.beginPath();ctx.arc(0,-14,5,0,7);ctx.fill()}ctx.restore()}
-function drawHouse(h){ctx.save();ctx.translate(h.x,h.y);ctx.fillStyle='#385a39';ctx.beginPath();ctx.ellipse(0,16,35,13,0,0,7);ctx.fill();ctx.fillStyle='#d9b77a';ctx.fillRect(-25,-22,50,40);ctx.fillStyle='#a54e42';ctx.beginPath();ctx.moveTo(-33,-20);ctx.lineTo(0,-48);ctx.lineTo(33,-20);ctx.closePath();ctx.fill();ctx.fillStyle='#f1d89c';ctx.fillRect(-7,-7,14,25);ctx.fillStyle='#7eae9b';ctx.fillRect(-19,-14,10,11);ctx.fillRect(9,-14,10,11);ctx.restore()}
+function drawHouse(h){ctx.save();ctx.translate(h.x,h.y);ctx.fillStyle='rgba(42,75,39,.28)';ctx.beginPath();ctx.ellipse(0,2,49,14,0,0,Math.PI*2);ctx.fill();if(workerHouse.complete&&workerHouse.naturalWidth>=896){ctx.imageSmoothingEnabled=true;ctx.drawImage(workerHouse,0,0,224,224,-48,-96,96,96)}ctx.restore()}
 const launcherAnim={state:'idle',time:0,queue:[],flowerType:'daisy'};
 const LAUNCHER_FRAME_W=224,LAUNCHER_FRAME_H=150;
 function drawLauncher(){
