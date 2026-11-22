@@ -105,9 +105,18 @@ function drawWorker(w){
  ctx.imageSmoothingEnabled=false;
  ctx.drawImage(sheet,frame*FRAME_W,0,FRAME_W,FRAME_H,-25,-62,50,62);
  if(w.carry){
-  ctx.fillStyle=w.carry==='pink'?'#eb78b1':w.carry==='tulip'?'#df4e60':w.carry==='sunflower'?'#f4bb39':'#fff';
-  ctx.beginPath();ctx.arc(20,-35,8,0,7);ctx.fill();
-  ctx.fillStyle='#3f8a43';ctx.fillRect(19,-28,3,12)
+  // Draw the exact flower variety the worker harvested, using the same atlas
+  // frame and source crop as flowers growing in the world.
+  if(atlasReady){
+   const flowerX={daisy:18,tulip:440,sunflower:720,pink:910}[w.carry]??18;
+   ctx.drawImage(atlas,flowerX,430,65,90,12,-51,24,34);
+  }else{
+   // Keep the held flower recognizable even before the atlas finishes loading.
+   ctx.strokeStyle='#3f8a43';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(23,-23);ctx.lineTo(23,-39);ctx.stroke();
+   ctx.fillStyle=w.carry==='pink'?'#e87bb1':w.carry==='tulip'?'#d94c5d':w.carry==='sunflower'?'#f5b83e':'#fff';
+   for(let i=0;i<6;i++){ctx.beginPath();ctx.arc(23+Math.cos(i*Math.PI/3)*5,-41+Math.sin(i*Math.PI/3)*5,3.2,0,Math.PI*2);ctx.fill()}
+   ctx.fillStyle='#e6b944';ctx.beginPath();ctx.arc(23,-41,2.8,0,Math.PI*2);ctx.fill();
+  }
  }
  ctx.restore()
 }
