@@ -223,7 +223,7 @@ function drawTossedFlower(t){
  const p=Math.min(1,t.time/t.duration),x=t.x+(t.tx-t.x)*p,y=t.y+(t.ty-t.y)*p-Math.sin(p*Math.PI)*42;
  // Use the same isolated cutout as the flower the worker collected.
  // Use the matching isolated flower variety from the replacement atlas.
- const sx=({daisy:0,tulip:65,sunflower:130,pink:195})[t.type]??0;
+ const sx=FLOWER_SOURCE_X[t.type]??0;
  ctx.save();ctx.translate(x,y);ctx.rotate(p*5);
  if(atlasReady)ctx.drawImage(atlas,sx,0,FLOWER_FRAME,FLOWER_FRAME,-16,-21,32,42);
  ctx.restore();
