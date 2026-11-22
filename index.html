@@ -157,9 +157,40 @@ function drawPlacementGrid(){
  ctx.restore();
 }
 function clampCamera(){const halfW=viewW/(2*camera.zoom),halfH=viewH/(2*camera.zoom);camera.x=Math.max(halfW-120,Math.min(W-halfW+120,camera.x));camera.y=Math.max(halfH-120,Math.min(H-halfH+120,camera.y))}
+function flowerSpawnBlocked(x,y){
+ const c=cellIndexAtWorld({x,y});
+ return sections.some(z=>z.category==='housing'&&sectionContainsCell(z,c.x,c.y));
+}
+function findFlowerSpawnPoint(){
+ // Keep the original world-edge margins and launcher exclusion, but choose
+ // only unplanned ground. A fallback scan prevents repeated random misses.
+ for(let attempt=0;attempt<350;attempt++){
+  const p={x:rand(150,W-150),y:rand(130,H-130)};
+  if(Math.hypot(p.x-center.x,p.y-center.y)>=260&&!flowerSpawnBlocked(p.x,p.y))return p;
+ }
+ const open=[];
+ for(let x=0;x<Math.ceil(W/BUILD_GRID);x++)for(let y=0;y<Math.ceil(H/BUILD_GRID);y++){
+  const p={x:x*BUILD_GRID+BUILD_GRID/2,y:y*BUILD_GRID+BUILD_GRID/2};
+  if(p.x<=150||p.x>=W-150||p.y<=130||p.y>=H-130||Math.hypot(p.x-center.x,p.y-center.y)<260||flowerSpawnBlocked(p.x,p.y))continue;
+  open.push({x:rand(x*BUILD_GRID,Math.min(W,(x+1)*BUILD_GRID)),y:rand(y*BUILD_GRID,Math.min(H,(y+1)*BUILD_GRID))});
+ }
+ return open.length?open[Math.floor(Math.random()*open.length)]:null;
+}
+function relocateFlowersFromPlannedAreas(){
+ // Preserve every flower and its current state/type; only move its spawn point
+ // when a newly defined plot covers it.
+ for(const f of flowers)if(flowerSpawnBlocked(f.x,f.y)){
+  const p=findFlowerSpawnPoint();
+  if(p){f.x=p.x;f.y=p.y}
+ }
+}
 function seedWorld(){
  flowers=[];const types=FLOWER_TYPES;
- for(let i=0;i<100;i++){let x=rand(150,W-150),y=rand(130,H-130);if(Math.hypot(x-center.x,y-center.y)<260)continue;flowers.push({x,y,type:types[i%types.length],phase:rand(0,6.2),state:'growing',respawn:0})}
+ for(let i=0;i<100;i++){
+  const p=findFlowerSpawnPoint();
+  if(!p)break;
+  flowers.push({x:p.x,y:p.y,type:types[i%types.length],phase:rand(0,6.2),state:'growing',respawn:0});
+ }
 }
 seedWorld();
 function loadGame(){try{const data=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!data||(data.version!==2&&data.version!==3))return;totalFlowers=Math.max(0,Number(data.flowers)||0);totalDelivered=Math.max(0,Number(data.delivered)||0);sections=Array.isArray(data.sections)?data.sections.filter(z=>z&&z.category==='housing'&&Number.isInteger(z.x)&&Number.isInteger(z.y)&&Number.isInteger(z.w)&&Number.isInteger(z.h)&&z.w>=1&&z.h>=1):[];
@@ -170,7 +201,7 @@ function loadGame(){try{const data=JSON.parse(localStorage.getItem(SAVE_KEY)||'n
  campfires=Array.isArray(data.campfires)?data.campfires.filter(c=>Number.isFinite(c.x)&&Number.isFinite(c.y)).map(c=>snapStructurePoint(c)):[];
  workers=houses.map(h=>({id:nextWorkerId++,houseX:h.x,houseY:h.y,x:h.x,y:h.y+35,state:'search',anim:0,carry:null,target:null,pickingFlower:null}));saveGame();}catch(e){}}
 function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({version:3,flowers:totalFlowers,delivered:totalDelivered,houses,campfires,sections}));}catch(e){}}
-loadGame();addEventListener('pagehide',saveGame);
+loadGame();relocateFlowersFromPlannedAreas();addEventListener('pagehide',saveGame);
 const launcher={x:center.x,y:center.y,scale:1};
 function drawGround(){
  ctx.fillStyle='#8fbd68';ctx.fillRect(0,0,W,H);
@@ -451,7 +482,7 @@ function frame(now){const dt=Math.min(.04,(now-last)/1000);last=now;update(dt);d
 let pointer={x:0,y:0},drag=null,pointers=new Map(),pinchStart=null;
 canvas.addEventListener('pointerdown',e=>{pointer={x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===2){const a=[...pointers.values()];pinchStart={distance:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y),zoom:camera.zoom};drag=null;selectionStart=null;return}if(planningHousing){const c=cellIndexAtWorld(screenToWorld(e.clientX,e.clientY));selectionStart=c;selectionCurrent=c;drag={id:e.pointerId,x:e.clientX,y:e.clientY,moved:false,planning:true};return}drag={id:e.pointerId,x:e.clientX,y:e.clientY,cx:camera.x,cy:camera.y,moved:false}});
 canvas.addEventListener('pointermove',e=>{pointer={x:e.clientX,y:e.clientY};if(pointers.has(e.pointerId))pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===2&&pinchStart){const a=[...pointers.values()],d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);camera.zoom=Math.max(.38,Math.min(1.35,pinchStart.zoom*d/pinchStart.distance));clampCamera();return}if(drag&&drag.id===e.pointerId){const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.abs(dx)+Math.abs(dy)>5)drag.moved=true;if(drag.planning){selectionCurrent=cellIndexAtWorld(screenToWorld(e.clientX,e.clientY));return}camera.x=drag.cx-dx/camera.zoom;camera.y=drag.cy-dy/camera.zoom;clampCamera()}});
-canvas.addEventListener('pointerup',e=>{const raw=screenToWorld(e.clientX,e.clientY);if(planningHousing&&drag&&drag.planning&&selectionStart){selectionCurrent=cellIndexAtWorld(raw);const r=cellRect(selectionStart,selectionCurrent),inside=r.x>=0&&r.y>=0&&(r.x+r.w)*BUILD_GRID<=W&&(r.y+r.h)*BUILD_GRID<=H,overlaps=sections.some(z=>r.x<z.x+z.w&&r.x+r.w>z.x&&r.y<z.y+z.h&&r.y+r.h>z.y);if(r.w<1||r.h<1)toast('Housing sections must be at least 1 × 1 tile');else if(!inside)toast('Keep the planned area inside the garden');else if(overlaps)toast('That area overlaps an existing planned section');else{sections.push({category:'housing',x:r.x,y:r.y,w:r.w,h:r.h});saveGame();planningHousing=false;document.getElementById('placeTip').classList.remove('show','planning');toast('Housing area planned! 🟦')}selectionStart=null;selectionCurrent=null}
+canvas.addEventListener('pointerup',e=>{const raw=screenToWorld(e.clientX,e.clientY);if(planningHousing&&drag&&drag.planning&&selectionStart){selectionCurrent=cellIndexAtWorld(raw);const r=cellRect(selectionStart,selectionCurrent),inside=r.x>=0&&r.y>=0&&(r.x+r.w)*BUILD_GRID<=W&&(r.y+r.h)*BUILD_GRID<=H,overlaps=sections.some(z=>r.x<z.x+z.w&&r.x+r.w>z.x&&r.y<z.y+z.h&&r.y+r.h>z.y);if(r.w<1||r.h<1)toast('Housing sections must be at least 1 × 1 tile');else if(!inside)toast('Keep the planned area inside the garden');else if(overlaps)toast('That area overlaps an existing planned section');else{sections.push({category:'housing',x:r.x,y:r.y,w:r.w,h:r.h});relocateFlowersFromPlannedAreas();saveGame();planningHousing=false;document.getElementById('placeTip').classList.remove('show','planning');toast('Housing area planned! 🟦')}selectionStart=null;selectionCurrent=null}
 else if(selling&&drag&&!drag.moved&&pointers.size===1){const house=houses.find(h=>Math.abs(raw.x-h.x)<=56&&raw.y>=h.y-106&&raw.y<=h.y+8),fire=campfires.find(c=>Math.abs(raw.x-c.x)<=56&&raw.y>=c.y-106&&raw.y<=c.y+8);if(house){selectedStructure={type:'house',ref:house};showSaleConfirmation('house',house,5)}else if(fire){selectedStructure={type:'campfire',ref:fire};showSaleConfirmation('campfire',fire,Math.floor(CAMPFIRE_COST/2))}else toast('Tap a worker house or campfire to select it')}
 else if(removingSection&&drag&&!drag.moved&&pointers.size===1){const c=cellIndexAtWorld(raw),index=sections.findIndex(z=>sectionContainsCell(z,c.x,c.y));if(index<0)toast('Tap inside a blue planned area to remove it');else{const z=sections[index],occupied=houses.some(h=>{const hc=cellIndexAtWorld(h);return sectionContainsCell(z,hc.x,hc.y)})||campfires.some(c=>{const cc=cellIndexAtWorld(c);return sectionContainsCell(z,cc.x,cc.y)});if(occupied)toast('Remove all structures in this area first');else{sections.splice(index,1);saveGame();removingSection=false;document.getElementById('placeTip').classList.remove('show','removing');toast('Planned area removed')}}}
 else if(placing&&drag&&!drag.moved&&pointers.size===1){const p=snapStructurePoint(raw);if(p.x<BUILD_GRID/2||p.y<BUILD_GRID/2||p.x>W-BUILD_GRID/2||p.y>H-BUILD_GRID/2||!housingSectionAt(p))toast('Structures can only be built in a blue housing section');else if(Math.hypot(p.x-launcher.x,p.y-launcher.y)<150||houses.some(h=>dist(h,p)<BUILD_GRID)||campfires.some(c=>dist(c,p)<BUILD_GRID))toast('Choose an open grid square');else if(placing==='campfire'){if(totalFlowers<CAMPFIRE_COST)toast('You need 25 flowers to build a campfire');else{totalFlowers-=CAMPFIRE_COST;campfires.push({x:p.x,y:p.y});saveGame();placing=false;document.getElementById('placeTip').classList.remove('show');toast('Campfire built! Nearby workers are boosted 🔥')}}else if(totalFlowers<10)toast('You need 10 flowers to build a house');else{totalFlowers-=10;houses.push({x:p.x,y:p.y});workers.push({id:nextWorkerId++,houseX:p.x,houseY:p.y,x:p.x,y:p.y+35,state:'search',anim:0,carry:null,target:null,pickingFlower:null});saveGame();placing=false;document.getElementById('placeTip').classList.remove('show');toast('Worker house built! A helper is on the way 🌼')}}pointers.delete(e.pointerId);if(pointers.size<2)pinchStart=null;drag=null});
