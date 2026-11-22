@@ -92,7 +92,7 @@ function drawWorker(w){
  const sheet=running?workerRun:workerWalk;
  // Never substitute a drawn placeholder: wait for the extracted source artwork.
  if(!sheet.complete||!sheet.naturalWidth){ctx.restore();return}
- const frame=moving?(Math.floor(w.anim*(running?9:7))%5):0;
+ const frame=moving?(running?(Math.floor(w.anim*9)%5):(3+(Math.floor(w.anim*7)%2))):0;
  const bob=moving?Math.sin(w.anim*(running?15:10))*1.2:0;
  ctx.translate(0,bob);
  ctx.imageSmoothingEnabled=false;
