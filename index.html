@@ -404,9 +404,9 @@ function getDyeVatFrameBounds(){
  if(dyeVatFrameBounds||!dyeVatCanvas)return dyeVatFrameBounds;
  const frameW=dyeVatCanvas.width/8,frameH=dyeVatCanvas.height,c=dyeVatCanvas.getContext('2d',{willReadFrequently:true}),out=[];
  for(let frame=0;frame<8;frame++){
-  const im=c.getImageData(Math.round(frame*frameW),0,Math.ceil(frameW),frameH),d=im.data,w=im.width,h=im.height;let left=w,top=h,right=-1,bottom=-1;
+  const frameX=Math.round(frame*frameW),cellW=Math.min(Math.ceil(frameW),dyeVatCanvas.width-frameX),im=c.getImageData(frameX,0,cellW,frameH),d=im.data,w=im.width,h=im.height;let left=w,top=h,right=-1,bottom=-1;
   for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(d[(y*w+x)*4+3]>8){left=Math.min(left,x);right=Math.max(right,x);top=Math.min(top,y);bottom=Math.max(bottom,y)}
-  out.push(right<left?{x:0,y:0,w:frameW,h:frameH}:{x:left,y:top,w:right-left+1,h:bottom-top+1});
+  out.push(right<left?{x:0,y:0,w:cellW,h:frameH}:{x:left,y:top,w:right-left+1,h:bottom-top+1});
  }
  dyeVatFrameBounds=out;return out;
 }
