@@ -91,7 +91,12 @@ function seedWorld(){
  for(let i=0;i<100;i++){let x=rand(150,W-150),y=rand(130,H-130);if(Math.hypot(x-center.x,y-center.y)<260)continue;flowers.push({x,y,type:types[i%types.length],phase:rand(0,6.2),state:'growing',respawn:0})}
 }
 seedWorld();
-function loadGame(){try{const data=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!data||data.version!==1)return;totalFlowers=Math.max(0,Number(data.flowers)||0);totalDelivered=Math.max(0,Number(data.delivered)||0);houses=(Array.isArray(data.houses)?data.houses:[]).filter(h=>Number.isFinite(h.x)&&Number.isFinite(h.y));workers=houses.map(h=>({id:nextWorkerId++,x:h.x,y:h.y+35,state:'search',anim:0,carry:null,target:null,pickingFlower:null}));}catch(e){}}
+function loadGame(){try{const data=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!data||data.version!==1)return;totalFlowers=Math.max(0,Number(data.flowers)||0);totalDelivered=Math.max(0,Number(data.delivered)||0);
+ // Migrate existing saves onto the shared structure grid. Snap legacy house
+ // positions to cell centers, keep them inside the garden, and collapse any
+ // legacy placements that land in the same cell. Persist the migrated layout.
+ const usedCells=new Set();houses=(Array.isArray(data.houses)?data.houses:[]).filter(h=>Number.isFinite(h.x)&&Number.isFinite(h.y)).map(h=>{const p=snapStructurePoint(h);return{x:Math.max(BUILD_GRID/2,Math.min(W-BUILD_GRID/2,p.x)),y:Math.max(BUILD_GRID/2,Math.min(H-BUILD_GRID/2,p.y))}}).filter(h=>{const key=h.x+','+h.y;if(usedCells.has(key))return false;usedCells.add(key);return true;});
+ workers=houses.map(h=>({id:nextWorkerId++,x:h.x,y:h.y+35,state:'search',anim:0,carry:null,target:null,pickingFlower:null}));saveGame();}catch(e){}}
 function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({version:1,flowers:totalFlowers,delivered:totalDelivered,houses}));}catch(e){}}
 loadGame();addEventListener('pagehide',saveGame);
 const launcher={x:center.x,y:center.y,scale:1};
