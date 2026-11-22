@@ -4,7 +4,7 @@
 A cheerful, handcrafted garden combining the existing pixel-art garden world with the new cartoon 2D worker character. The world should feel like a little living garden colony viewed from above, with clear silhouettes, warm natural colors, chunky pixel edges, and readable animation at iPhone scale.
 
 ## Existing source art
-- `IMG_1382.jpeg`: two-row campfire animation sheet on a vivid magenta background. Isolate each pose individually, remove only the connected magenta matte, and preserve the complete dark outline and warm fire/log colors. In-game playback uses only the four frames in the top row; the bottom row remains unused.
+- `IMG_1382.jpeg`: two-row campfire animation sheet on a vivid magenta background. Isolate each pose individually, remove only the connected magenta matte, and preserve the complete dark outline and warm fire/log colors. In-game playback uses only the four frames in the bottom row; the top row remains unused. This row has more pronounced flame-silhouette changes at the compact 50 × 50 in-world draw size.
 Use the repository's two supplied sheets as the source of truth:
 - `IMG_1375.jpeg`: current cartoon 2D worker character sprite sheet on a bright magenta background; used for walk, run, pick, and carrying animations.\n- `IMG_1369.jpeg`: original world, flower, and tile art source.
 - `IMG_1370.jpeg`: staged flower-pile sizes and launcher-related visual reference.
