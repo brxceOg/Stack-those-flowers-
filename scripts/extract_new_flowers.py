@@ -69,12 +69,25 @@ def clean_cell(cell):
                 components.append(pixels)
     if not components:
         raise RuntimeError("A flower cell became empty during magenta removal")
-    # Keep all meaningful parts of the flower, including separated petals/leaves,
-    # while discarding tiny JPEG noise left on the magenta field.
-    keep = np.zeros((h, w), dtype=bool)
-    for component in components:
-        for y, x in component:
-            keep[y, x] = True
+    # Keep the main flower silhouette and any detached leaves/details close to it.
+    # This also rejects the top edge of the neighboring flower in the staggered rows.
+    components.sort(key=len, reverse=True)
+    anchor = np.zeros((h, w), dtype=bool)
+    for y, x in components[0]:
+        anchor[y, x] = True
+    near = anchor.copy()
+    for _ in range(12):
+        expanded = near.copy()
+        expanded[1:, :] |= near[:-1, :]
+        expanded[:-1, :] |= near[1:, :]
+        expanded[:, 1:] |= near[:, :-1]
+        expanded[:, :-1] |= near[:, 1:]
+        near = expanded
+    keep = anchor.copy()
+    for component in components[1:]:
+        if any(near[y, x] for y, x in component):
+            for y, x in component:
+                keep[y, x] = True
     rgba[~keep, 3] = 0
     rgba[~keep, :3] = 0
     return Image.fromarray(rgba, "RGBA")
