@@ -2,6 +2,7 @@ from collections import deque
 from pathlib import Path
 import numpy as np
 from PIL import Image
+from matte_removal import remove_magenta_matte
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "IMG_1380.jpeg"
@@ -16,56 +17,7 @@ NAMES = ("sunflower", "daisy", "red-bouquet", "bluebells", "tulip", "rose")
 FRAME = 224
 
 def remove_magenta_background(image):
-    rgba = np.asarray(image.convert("RGBA"), dtype=np.uint8).copy()
-    rgb = rgba[:, :, :3].astype(np.int16)
-    r, g, b = rgb[:, :, 0], rgb[:, :, 1], rgb[:, :, 2]
-    # Identify the vivid magenta field and its JPEG fringe, then remove only
-    # the edge-connected region so artwork colors and highlights are retained.
-    candidate = (r > 105) & (b > 95) & (g < 170) & ((r-g) > 35) & ((b-g) > 25)
-    h, w = candidate.shape
-    seen = np.zeros((h, w), dtype=bool)
-    q = deque()
-    def add(y, x):
-        if candidate[y, x] and not seen[y, x]:
-            seen[y, x] = True
-            q.append((y, x))
-    for x in range(w):
-        add(0, x); add(h-1, x)
-    for y in range(h):
-        add(y, 0); add(y, w-1)
-    while q:
-        y, x = q.popleft()
-        for dy, dx in ((-1,0),(1,0),(0,-1),(0,1)):
-            ny, nx = y+dy, x+dx
-            if 0 <= ny < h and 0 <= nx < w:
-                add(ny, nx)
-    rgba[seen, 3] = 0
-    rgba[seen, :3] = 0
-    return defringe_magenta_edges(Image.fromarray(rgba, "RGBA"))
-
-def defringe_magenta_edges(image, strength=0.92):
-    """Neutralize magenta JPEG spill on the retained silhouette edge without softening its alpha."""
-    rgba = np.asarray(image.convert("RGBA"), dtype=np.uint8).copy()
-    rgb = rgba[:, :, :3].astype(np.int16)
-    alpha = rgba[:, :, 3] > 0
-    h, w = alpha.shape
-    # Find the one-pixel retained rim beside transparent sheet background.
-    edge = np.zeros((h, w), dtype=bool)
-    edge[1:, :] |= ~alpha[:-1, :]
-    edge[:-1, :] |= ~alpha[1:, :]
-    edge[:, 1:] |= ~alpha[:, :-1]
-    edge[:, :-1] |= ~alpha[:, 1:]
-    edge &= alpha
-    # Magenta contamination raises red and blue together relative to green.
-    spill = np.maximum(0, np.minimum(rgb[:, :, 0], rgb[:, :, 2]) - rgb[:, :, 1] - 10)
-    for channel in (0, 2):
-        cleaned = rgb[:, :, channel].copy()
-        cleaned[edge] = np.maximum(0, cleaned[edge] - np.rint(spill[edge] * strength)).astype(np.int16)
-        rgba[:, :, channel] = cleaned.astype(np.uint8)
-    # Fully transparent pixels carry no matte color into later resampling.
-    rgba[rgba[:, :, 3] == 0, :3] = 0
-    return Image.fromarray(rgba, "RGBA")
-
+    return remove_magenta_matte(image)
 
 def clean_cell(cell):
     rgba = np.asarray(remove_magenta_background(cell), dtype=np.uint8).copy()
