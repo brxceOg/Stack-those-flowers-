@@ -83,11 +83,10 @@ def main():
     if not SOURCE.is_file():
         raise FileNotFoundError(SOURCE)
     sheet = Image.open(SOURCE).convert("RGB")
-    if sheet.size != (399, 400):
-        raise RuntimeError(f"Unexpected flower sheet size {sheet.size}; expected 399x400")
-    # Explicit boundaries keep all six illustrations inside their own cells.
-    x_edges = (0, 199, 399)
-    y_edges = (0, 170, 300, 400)
+    # Derive cell boundaries from the uploaded sheet dimensions; its six illustrations
+    # are arranged in two columns and three staggered-height rows.
+    x_edges = (0, sheet.width // 2, sheet.width)
+    y_edges = (0, round(sheet.height * 0.425), round(sheet.height * 0.75), sheet.height)
     atlas = Image.new("RGBA", (FRAME*len(NAMES), FRAME), (0,0,0,0))
     for i, name in enumerate(NAMES):
         row, col = divmod(i, 2)
