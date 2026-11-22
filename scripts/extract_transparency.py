@@ -5,7 +5,7 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "assets"
-OUT.mkdir(exist_ok=True)
+OUT.mkdir(parents=True, exist_ok=True)
 
 def remove_connected_paper(src, dst):
     im = Image.open(ROOT / src).convert("RGBA")
