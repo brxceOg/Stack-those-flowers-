@@ -149,7 +149,8 @@ function drawWorld(){
  ctx.clearRect(0,0,viewW,viewH);ctx.save();ctx.translate(viewW/2,viewH/2);ctx.scale(camera.zoom,camera.zoom);ctx.translate(-camera.x,-camera.y);
  drawGround();for(const f of flowers)drawFlower(f);for(const h of houses)drawHouse(h);drawLauncher();drawPile();
  for(const p of particles){ctx.fillStyle=p.color;ctx.globalAlpha=Math.max(0,p.life);ctx.beginPath();ctx.arc(p.x,p.y,4,0,7);ctx.fill()}ctx.globalAlpha=1;
- for(const w of workers)drawWorker(w);
+ for(const t of tossedFlowers)drawTossedFlower(t);
+  for(const w of workers)drawWorker(w);
  if(placing){const p=screenToWorld(pointer.x,pointer.y);ctx.strokeStyle='#fff4a2';ctx.lineWidth=4/camera.zoom;ctx.setLineDash([8/camera.zoom,6/camera.zoom]);ctx.beginPath();ctx.arc(p.x,p.y,42,0,7);ctx.stroke();ctx.setLineDash([])}
  ctx.restore();
 }
