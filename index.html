@@ -170,9 +170,14 @@ function extractGridPoseCanvases(img){
 // animation state. Per-frame "fit to box" scaling makes short/tall poses pulse
 // in size as the animation advances, even when their source art is consistent.
 function sharedPoseScale(frames){
- const maxW=Math.max(...frames.map(frame=>frame.width));
- const maxH=Math.max(...frames.map(frame=>frame.height));
- return Math.min(168/maxW,174/maxH);
+ // A single unusually wide/tall pose must not dictate the scale for every
+ // character frame. Use the 75th-percentile pose bounds as the common scale
+ // reference so typical poses regain their intended on-screen size while
+ // retaining exactly the same pixels-per-unit across the animation.
+ const widths=frames.map(frame=>frame.width).sort((a,b)=>a-b);
+ const heights=frames.map(frame=>frame.height).sort((a,b)=>a-b);
+ const pick=values=>values[Math.min(values.length-1,Math.floor((values.length-1)*.75))];
+ return Math.min(180/pick(widths),184/pick(heights));
 }
 function packPoseStrip(frames,scale){
  const cell=192,out=document.createElement('canvas');out.width=frames.length*cell;out.height=cell;
