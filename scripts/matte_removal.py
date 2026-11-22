@@ -41,8 +41,8 @@ def remove_magenta_matte(image):
     # intentionally dark; subtracting the same spill from red and blue keeps
     # its luminance/detail while removing the pink cast.
     out_rgb = rgb.copy()
-    spill = np.maximum(0.0, np.minimum(rgb[:, :, 0], rgb[:, :, 2]) - rgb[:, :, 1] - 10.0)
-    out_rgb[recover, 0] = np.maximum(0.0, rgb[recover, 0] - 0.92 * spill[recover])
+    spill = np.maximum(0.0, np.minimum(rgb[:, :, 0], rgb[:, :, 2]) - rgb[:, :, 1])
+    out_rgb[recover, 0] = np.maximum(0.0, rgb[recover, 0] - spill[recover])
     out_rgb[recover, 2] = np.maximum(0.0, rgb[recover, 2] - 0.92 * spill[recover])
     out_rgb[connected & ~recover] = 0
     out = np.dstack((out_rgb, alpha * 255.0)).round().clip(0, 255).astype(np.uint8)
