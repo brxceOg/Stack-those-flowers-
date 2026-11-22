@@ -55,7 +55,7 @@ const workerRun=new Image();workerRun.src='assets/worker-run.png?v=cartoon1375-f
 const workerPick=new Image();workerPick.src='assets/worker-pick.png?v=cartoon1375-final';
 const workerCarry=new Image();workerCarry.src='assets/worker-carry.png?v=cartoon1375-final';
 const workerIdle=new Image();workerIdle.src='assets/worker-idle.png?v=cartoon1375-final';
-const workerToss=new Image();workerToss.src='assets/worker-toss.png?v=toss1379';
+const workerToss=new Image();workerToss.src='assets/worker-toss.png?v=toss-tight-crop-1122';
 const launcherCollection=new Image();launcherCollection.src='assets/flower-launcher-collection.png?v=launcher1378';
 const launcherCharge=new Image();launcherCharge.src='assets/flower-launcher-charge.png?v=launcher1378';
 const launcherFire=new Image();launcherFire.src='assets/flower-launcher-fire.png?v=launcher1378';
@@ -145,7 +145,9 @@ function drawWorker(w){
  if(w.state==='tossing'){
   // Toss art is stored in a wider 256x192 canvas so its raised-arm pose
   // can match the other animations' 58px character height without distortion.
-  ctx.drawImage(sheet,0,0,sheet.naturalWidth,sheet.naturalHeight,-38.5,-58,77,58);
+  const tossH=60;
+  const tossW=tossH*(sheet.naturalWidth/sheet.naturalHeight);
+  ctx.drawImage(sheet,-tossW/2,-tossH,tossW,tossH);
  }else{
   ctx.drawImage(sheet,frame*FRAME_W,0,FRAME_W,FRAME_H,-29,-58,58,58);
  }
