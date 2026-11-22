@@ -1,4 +1,3 @@
-from collections import deque
 from pathlib import Path
 import numpy as np
 from PIL import Image
@@ -72,14 +71,24 @@ def main():
     if not SOURCE.is_file():
         raise FileNotFoundError(SOURCE)
     sheet = Image.open(SOURCE).convert("RGB")
-    # Derive cell boundaries from the uploaded sheet dimensions; its six illustrations
-    # are arranged in two columns and three staggered-height rows.
-    x_edges = (0, sheet.width // 2, sheet.width)
-    y_edges = (0, round(sheet.height * 0.425), round(sheet.height * 0.715), sheet.height)
+    # Each illustration has its own explicit crop. The uploaded sheet is NOT
+    # a uniform 2x3 grid: the middle and bottom rows sit at different heights,
+    # so dividing it into equal-height bands cuts petals/stems and can include
+    # pixels from the neighboring illustration.
+    # Coordinates are source-image pixels (IMG_1380.jpeg, 399x447).
+    crop_boxes = {
+        "sunflower": (24, 0, 190, 184),
+        "daisy": (225, 0, 399, 184),
+        "red-bouquet": (24, 174, 198, 296),
+        "bluebells": (222, 172, 399, 296),
+        "tulip": (48, 294, 166, 435),
+        "rose": (248, 292, 370, 435),
+    }
+    if sheet.width < 399 or sheet.height < 447:
+        raise RuntimeError(f"Unexpected flower source dimensions: {sheet.size}; expected at least 399x447")
     atlas = Image.new("RGBA", (FRAME*len(NAMES), FRAME), (0,0,0,0))
     for i, name in enumerate(NAMES):
-        row, col = divmod(i, 2)
-        cell = sheet.crop((x_edges[col], y_edges[row], x_edges[col+1], y_edges[row+1]))
+        cell = clean_cell(sheet.crop(crop_boxes[name]))
         cell = clean_cell(cell)
         bbox = cell.getchannel("A").getbbox()
         if bbox is None:
