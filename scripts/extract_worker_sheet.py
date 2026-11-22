@@ -142,9 +142,9 @@ for row_index in range(ROW_COUNT):
 
 # Keep the intended action groups: active walk strides, active run strides,
 # and the complete crouch/reach/stand flower-picking action.
-walk, wy0, wy1 = extract_row_cells(im, *rows[0])
-run, ry0, ry1 = extract_row_cells(im, *rows[1])
-pick, py0, py1 = extract_row_cells(im, *rows[2])
+walk = extract_row_cells(im, *rows[0])
+run = extract_row_cells(im, *rows[1])
+pick = extract_row_cells(im, *rows[2])
 write_sheet(walk[3:], "walk")
 write_sheet(run[2:], "run")
 write_sheet(pick, "pick")
