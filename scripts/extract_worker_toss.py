@@ -58,28 +58,22 @@ bbox = clean.getchannel("A").getbbox()
 if bbox is None:
     raise RuntimeError("No worker artwork remained after magenta removal")
 sprite = clean.crop(bbox)
-# The uploaded toss pose is a wide, compact source image. Enlarge its actual
-# artwork to the same character height as the regular 192x192 worker frames,
-# preserving aspect ratio; use a wider transparent frame so raised arms are
-# not squeezed or clipped.
-scale = TARGET_SPRITE_HEIGHT / sprite.height
-if sprite.width * scale > MAX_SPRITE_WIDTH:
-    scale = MAX_SPRITE_WIDTH / sprite.width
-sprite = sprite.resize((round(sprite.width * scale), round(sprite.height * scale)), Image.Resampling.LANCZOS)
-if sprite.width > MAX_SPRITE_WIDTH or sprite.height > FRAME_H-8:
-    raise RuntimeError(f"Toss pose will not fit without distortion: {sprite.size}")
-frame = Image.new("RGBA", (FRAME_W, FRAME_H), (0,0,0,0))
-frame.alpha_composite(sprite, ((FRAME_W-sprite.width)//2, FRAME_H-4-sprite.height))
+# Export a tightly cropped transparent sprite rather than a padded 256x192
+# worker canvas. The runtime sizes the visible artwork itself, avoiding the
+# extra transparent margins that made this pose look smaller than other frames.
+sprite = sprite.resize((round(sprite.width * TARGET_SPRITE_HEIGHT / sprite.height), TARGET_SPRITE_HEIGHT), Image.Resampling.LANCZOS)
+bbox = sprite.getchannel("A").getbbox()
+sprite = sprite.crop(bbox)
 OUT.mkdir(parents=True, exist_ok=True)
 FRAME_DIR.mkdir(parents=True, exist_ok=True)
 path = OUT / "worker-toss.png"
-frame.save(path, optimize=True)
-frame.save(FRAME_DIR / "toss-01.png", optimize=True)
+sprite.save(path, optimize=True)
+sprite.save(FRAME_DIR / "toss-01.png", optimize=True)
 check = Image.open(path).convert("RGBA")
 alpha = np.asarray(check.getchannel("A"))
-if check.size != (FRAME_W, FRAME_H) or alpha[0,0] != 0 or np.count_nonzero(alpha) < 300:
+if check.width < 80 or check.height != TARGET_SPRITE_HEIGHT or np.count_nonzero(alpha) < 300:
     raise RuntimeError("Toss pose transparency/dimension validation failed")
 # Ensure the canvas contains both transparent background and opaque artwork.
 if not np.any(alpha == 0) or not np.any(alpha == 255):
     raise RuntimeError("Toss pose alpha channel is incomplete")
-print(f"{path.relative_to(ROOT)}: scaled flower-toss pose, {check.size}, transparent alpha verified")
+print(f"{path.relative_to(ROOT)}: tight-cropped flower-toss sprite, {check.size}, transparent alpha verified")
