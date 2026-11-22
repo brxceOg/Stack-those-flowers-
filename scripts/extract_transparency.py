@@ -195,7 +195,7 @@ def extract_worker_cycles():
         frames = []
         for i, (x0,y0,x1,y1,area) in enumerate(group):
             pad = 3
-            crop = atlas.crop((max(0,x0-pad), max(0,y0-pad), min(atlas.width,x1+pad), min(atlas.height,y1+pad)))
+            crop = atlas.crop((max(0,x0-pad), max(30,y0-pad), min(atlas.width,x1+pad), min(atlas.height,y1+pad)))
             crop = clean_isolated_paper(crop)
             crop = remove_tiny_alpha_components(crop)
             crop = retain_sprite_components(crop, max_gap=3)
