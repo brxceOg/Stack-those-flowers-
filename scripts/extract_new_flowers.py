@@ -13,7 +13,7 @@ FRAME_DIR.mkdir(parents=True, exist_ok=True)
 # The new sheet is a 2-column by 3-row grid:
 # sunflower, daisy, red bouquet, bluebells, tulip, rose.
 NAMES = ("sunflower", "daisy", "red-bouquet", "bluebells", "tulip", "rose")
-FRAME = 176
+FRAME = 224
 
 def remove_magenta_background(image):
     rgba = np.asarray(image.convert("RGBA"), dtype=np.uint8).copy()
@@ -21,7 +21,7 @@ def remove_magenta_background(image):
     r, g, b = rgb[:, :, 0], rgb[:, :, 1], rgb[:, :, 2]
     # Identify the vivid magenta field and its JPEG fringe, then remove only
     # the edge-connected region so artwork colors and highlights are retained.
-    candidate = (r > 115) & (b > 105) & (g < 125) & ((r-g) > 65) & ((b-g) > 55)
+    candidate = (r > 105) & (b > 95) & (g < 170) & ((r-g) > 35) & ((b-g) > 25)
     h, w = candidate.shape
     seen = np.zeros((h, w), dtype=bool)
     q = deque()
