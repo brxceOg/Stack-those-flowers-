@@ -29,6 +29,11 @@ for i in range(FRAME_COUNT):
     x0 = round(i * sheet.width / FRAME_COUNT)
     x1 = round((i + 1) * sheet.width / FRAME_COUNT)
     cell = clean.crop((x0, 0, x1, sheet.height))
+    # The supplied sheet has thin black guide/separator strokes running along
+    # the vertical edges of each pose. Remove a narrow side gutter before
+    # finding the artwork bounds so those lines cannot become part of a sprite.
+    side_gutter = 7
+    cell = cell.crop((side_gutter, 0, cell.width - side_gutter, cell.height))
     alpha = np.asarray(cell.getchannel("A"))
     bbox = Image.fromarray(alpha).getbbox()
     if bbox is None:
