@@ -96,10 +96,9 @@ function drawWorker(w){
  if(!sheet.complete||!sheet.naturalWidth){ctx.restore();return}
  const FRAME_W=160,FRAME_H=208;
  const count=Math.max(1,Math.floor(sheet.naturalWidth/FRAME_W));
- // Hold the two lowest flower-picking poses longer so the crouch reads clearly.
- const pickFrame=picking
-  ?(w.anim<.55?0:w.anim<1.1?1:Math.min(count-1,2+Math.floor((w.anim-1.1)/.25)))
-  :0;
+ // The picking sheet now contains only two crouch/grab poses.
+ // Give each pose a clear, even hold; never advance into a walk frame.
+ const pickFrame=picking?(w.anim<.8?0:1):0;
  const frame=picking?pickFrame:(moving?(Math.floor(w.anim*(running?10:8))%count):0);
  const bob=moving?Math.sin(w.anim*(running?15:10))*1.2:0;
  ctx.translate(0,bob);
@@ -126,7 +125,7 @@ function update(dt){
  for(const f of flowers){if(f.state==='picked'&&f.respawn>0){f.respawn-=dt;if(f.respawn<=0){f.state='growing';f.respawn=0}}}
  for(const w of workers){
   if(w.state==='idle'||w.state==='search'){const f=flowers.filter(f=>f.state==='growing').sort((a,b)=>dist(w,a)-dist(w,b))[0];if(f){w.target=f;w.state='toFlower'}}
-  if(w.state==='toFlower'&&w.target){if(moveToward(w,w.target,88,dt)){w.target.state='picked';w.target.respawn=8;w.pickType=w.target.type;w.target=null;w.state='picking';w.timer=3.15;w.anim=0}}
+  if(w.state==='toFlower'&&w.target){if(moveToward(w,w.target,88,dt)){w.target.state='picked';w.target.respawn=8;w.pickType=w.target.type;w.target=null;w.state='picking';w.timer=1.6;w.anim=0}}
   else if(w.state==='picking'){w.anim+=dt;w.timer-=dt;if(w.timer<=0){w.carry=w.pickType||'daisy';w.pickType=null;w.state='toLauncher'}}
   else if(w.state==='toLauncher'){if(moveToward(w,launcher,105,dt)){w.state='deposit';w.timer=.35}}
   else if(w.state==='deposit'){w.timer-=dt;if(w.timer<=0){totalFlowers++;totalDelivered++;w.carry=null;w.state='search';launchFlower()}}
