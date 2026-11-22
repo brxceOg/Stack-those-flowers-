@@ -30,5 +30,6 @@ jobs:
             echo "No generated asset changes."
           else
             git commit -m "Add transparent flower sprite atlases"
+            git pull --rebase origin main
             git push
           fi
