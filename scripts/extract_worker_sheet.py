@@ -22,6 +22,7 @@ def remove_magenta_matte(image):
     candidate = (r > 78) & (b > 78) & (g < 158) & ((r-g) > 42) & ((b-g) > 42)
     seen = np.zeros((h, w), dtype=bool)
     queue = deque()
+    print('matte diagnostics corner RGB:', rgb[0,0].astype(int).tolist(), 'candidate:', bool(candidate[0,0]), 'candidate pixels:', int(candidate.sum()))
     def add(y, x):
         if candidate[y, x] and not seen[y, x]:
             seen[y, x] = True
@@ -37,6 +38,7 @@ def remove_magenta_matte(image):
             if 0 <= ny < h and 0 <= nx < w:
                 add(ny, nx)
     if np.any(seen):
+        print('matte diagnostics edge-connected:', int(seen.sum()))
         delta = np.max(np.abs(rgb - MAGENTA), axis=2)
         alpha = np.clip(delta / 255.0, 0.0, 1.0)
         # JPEG compression leaves tiny color deviations across the flat magenta
@@ -54,6 +56,7 @@ def extract_cell(sheet, row, col):
     cell_w, cell_h = sheet.width // COLS, sheet.height // ROWS
     x0, y0 = col*cell_w, row*cell_h
     cell = remove_magenta_matte(sheet.crop((x0, y0, x0+cell_w, y0+cell_h)))
+    print('cell diagnostics:', row, col, 'alpha bbox:', cell.getchannel('A').getbbox(), 'corner alpha:', cell.getpixel((0,0))[3])
     bbox = cell.getchannel("A").getbbox()
     if bbox is None:
         raise RuntimeError(f"Empty new-cartoon pose at row {row}, column {col}")
