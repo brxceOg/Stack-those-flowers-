@@ -15,10 +15,16 @@ A standalone, mobile-first idle gathering game for iPhone Safari, hosted as a Gi
 - World dimensions: 2600 × 1900 world units.
 - The Flower Launcher is the fixed world center and the visual anchor.
 - Worker House costs 10 deposited flowers and creates one worker.
+- Campfire costs 25 deposited flowers, occupies one 96 × 96 grid tile inside a planned housing area, and animates using eight isolated transparent frames from `IMG_1382.jpeg`.
+- Workers within 320 world units of a campfire receive +20% movement speed and +20% flower-picking speed. Campfires are saved with the world.
 - One flower is deposited per successful worker delivery.
 - Picked flowers regrow after a short cooldown.
 - Camera supports one-finger drag, two-finger pinch zoom, zoom buttons, and a recenter button.
 - The HUD and build drawer remain fixed while the world moves beneath them.
+
+## Structure selling
+- Sell Structure mode lets the player select a Worker House or Campfire, review its flower refund, then explicitly confirm or cancel.
+- Selling a Worker House refunds 5 flowers and removes its assigned worker; selling a Campfire refunds 12 flowers and removes its boost radius.
 
 ## Technical constraints
 - Plain HTML, CSS, and JavaScript; no build step or external runtime dependency.
