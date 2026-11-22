@@ -25,11 +25,11 @@ Preserve both original files unchanged. All production sprite assets must be der
 ## Worker
 - Use `IMG_1390.jpeg` as the replacement base-worker sheet. Its 4×4 layout is cut into individual poses by foreground-component isolation inside each cell, removing the pale sheet background and edge-touching separator rules while retaining enclosed light details and the original dark outlines.
 - Row one supplies the four-frame walk cycle; row two supplies the four-frame run cycle; row three supplies idle, two pickup poses, and the arms-forward toss/hold pose; row four supplies the four-frame carrying cycle. Preserve the new witch outfit and original palette.
-- Keep every extracted pose on a consistent transparent 192×192 canvas, scale uniformly, and align the feet to a shared baseline.
+- Keep every extracted pose on a consistent transparent 192×192 canvas, scale uniformly, and align the feet to a shared baseline. Draw the character at approximately 76 world pixels tall so it remains visually consistent with the enlarged base worker.
 - Carry a clearly visible flower while returning to the launcher.\n- On arrival within launcher range, hold the flower in the normal carrying pose for a brief 0.3-second wind-up. Switch to the dedicated `IMG_1379.jpeg` raised-arm toss pose at the exact moment the flower is released, then animate the flower arcing into the launcher before depositing it. The toss artwork is exported tightly cropped with transparent background and drawn by visible-art height (60 world pixels), so transparent canvas padding cannot make it appear smaller than the other worker animations.
 - Keep the worker's feet aligned to a stable ground baseline across every frame.
 - Never stretch individual frames to fit; preserve original aspect ratio.
-- In-world worker rendering uses a smaller 58×58 square draw size for the 192×192 transparent frame canvas; scale width and height uniformly and keep the feet on the same ground baseline.
+- In-world worker rendering uses a 76×76 square draw size for the 192×192 transparent frame canvas; scale width and height uniformly and keep the feet on the same ground baseline.
 
 ## Flowers and world
 - Use the supplied daisies, tulips, sunflowers, pink flowers, growth stages, and loose petals.
