@@ -98,4 +98,4 @@ Preserve both original files unchanged. All production sprite assets must be der
 
 - During the default worker's dye-vat drinking sequence, render the matching isolated bottle frame from `IMG_1386.jpeg` as a separate foreground prop in the worker's raised hand. Use the same vat type as the consumed world vat, preserve its complete outline, and keep it visibly gripped throughout the drink animation. Do not substitute a generic bottle or bake the prop into the worker sheet.
 
-- At the exact end of the final drink frame, clear the held-vat reference before the completion poof and idle/search transition. The bottle must no longer render during the brief poof-to-buff delay or once the worker returns to idle.
+- Keep the held vat visible through the drinking poses, then hide it as soon as the worker enters the final mouth-open frame (`frame === count - 1`). This makes the bottle disappear while the worker is still visibly drinking, before the worker returns to idle for the buff. Clear the held-vat reference at drink completion; it must remain hidden during the completion poof and buff delay.
