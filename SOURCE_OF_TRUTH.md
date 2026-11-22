@@ -40,7 +40,7 @@ A standalone, mobile-first idle gathering game for iPhone Safari, hosted as a Gi
 - Persist player progress in localStorage when save/load is added; version the save schema.
 
 ## Asset inventory
-- `IMG_1394.jpeg`: final replacement base-worker sheet with a pale background and 4×4 layout for walk, run, idle, pickup, toss/hold, and carrying poses.\n- `IMG_1393.jpeg`: final replacement Dye Maker worker sheet with a pale background and 4×4 layout for run, idle, pickup/interaction, and carrying poses.\n- `IMG_1369.jpeg`: combined pixel-art sheet containing worker walk/run poses, flower/pickup poses, flower growth stages, flower varieties, and ground/world tiles.
+- `IMG_1393.jpeg`: final replacement base-worker sheet with a pale background and 4×4 layout for walk, run, idle, pickup, toss/hold, and carrying poses.\n- `IMG_1394.jpeg`: final replacement Dye Maker worker sheet with a pale background and 4×4 layout for run, idle, pickup/interaction, and carrying poses.\n- `IMG_1369.jpeg`: combined pixel-art sheet containing worker walk/run poses, flower/pickup poses, flower growth stages, flower varieties, and ground/world tiles.
 - `IMG_1370.jpeg`: flower-pile progression reference sheet.
 - The new worker sheets are split into their individual 4×4 cells at runtime. Each cell is isolated by foreground-component detection and edge-connected background removal before being packed into transparent animation strips/atlases; do not display either full source sheet in-game.
 
@@ -74,7 +74,7 @@ A standalone, mobile-first idle gathering game for iPhone Safari, hosted as a Gi
 - A Dye Maker Tent costs 35 flowers and must be placed inside a planned housing section, following the existing building placement rules.
 - Each tent has one dedicated dye maker. The maker waits until a flower is visibly available in the flower pile, runs to collect it, carries it back to the tent, and starts a 4.5-second brewing cycle.
 - When brewing finishes, the tent spits a physical dye-vat item out from its entrance. Dye vats remain in the world and are saved with the existing V3 save data; the dye tent positions are also saved. Existing V2/V3 saves without these fields migrate to empty dye-tent and dye-vat arrays.
-- The base worker uses `IMG_1394.jpeg`; the Dye Maker uses `IMG_1393.jpeg`. Both are 4×4 pale-background sheets. Each cell is independently segmented, edge-connected background and separator marks are discarded, enclosed light details are retained, and the isolated poses are packed into transparent frame canvases. The base worker uses rows 1–4 for walk, run, idle/pickup/toss, and carrying. The Dye Maker uses rows 1–4 for run, idle/pickup/interaction, and carrying.
+- The base worker uses `IMG_1393.jpeg`; the Dye Maker uses `IMG_1394.jpeg`. Both are 4×4 pale-background sheets. Each cell is independently segmented, edge-connected background and separator marks are discarded, enclosed light details are retained, and the isolated poses are packed into transparent frame canvases. The base worker uses rows 1–4 for walk, run, idle/pickup/toss, and carrying. The Dye Maker uses rows 1–4 for run, idle/pickup/interaction, and carrying.
 - The dye-vat sprite sheet is keyed at runtime using magenta transparency only. Preserve all dark bottle-outline pixels, including the lowest rows, and crop each of the eight horizontal frames at its full 84-pixel height.
 
 
