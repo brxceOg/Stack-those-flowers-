@@ -113,10 +113,12 @@ const workerToss=new Image();workerToss.src='assets/worker-toss.png?v=matte-unmi
  // Segment the entire keyed sheet into connected artwork components.
  // Each output canvas is bounded by that sprite's measured opaque pixels;
  // no fixed cell widths or per-frame crop rectangles are used.
- function extractDyeMakerRows(minArea=90){
+ let dyeMakerAtlas=null,dyeMakerFrameMeta=[];
+ function extractDyeMakerSprites(){
   const width=dyeMakerCanvas.width,height=dyeMakerCanvas.height;
   const data=dyeMakerCanvas.getContext('2d',{willReadFrequently:true}).getImageData(0,0,width,height).data;
   const visited=new Uint8Array(width*height),stack=new Int32Array(width*height),components=[];
+  // Four-way connectivity prevents diagonally adjacent outlines from joining.
   for(let y=0;y<height;y++)for(let x=0;x<width;x++){
    const seed=y*width+x;
    if(visited[seed]||data[seed*4+3]<=12)continue;
@@ -125,40 +127,57 @@ const workerToss=new Image();workerToss.src='assets/worker-toss.png?v=matte-unmi
    while(sp){
     const p=stack[--sp],px=p%width,py=(p/width)|0;count++;
     if(px<minX)minX=px;if(px>maxX)maxX=px;if(py<minY)minY=py;if(py>maxY)maxY=py;
-    for(let oy=-1;oy<=1;oy++)for(let ox=-1;ox<=1;ox++){
-     if(!ox&&!oy)continue;
-     const nx=px+ox,ny=py+oy;
-     if(nx<0||nx>=width||ny<0||ny>=height)continue;
-     const ni=ny*width+nx;
+    const neighbors=[p-1,p+1,p-width,p+width];
+    for(let k=0;k<4;k++){
+     const ni=neighbors[k];
+     if((k===0&&px===0)||(k===1&&px===width-1)||(k===2&&py===0)||(k===3&&py===height-1))continue;
      if(!visited[ni]&&data[ni*4+3]>12){visited[ni]=1;stack[sp++]=ni}
     }
    }
-   if(count>=minArea)components.push({minX,maxX,minY,maxY,count,centerY:(minY+maxY)/2});
+   if(count>=90)components.push({minX,maxX,minY,maxY,count,centerY:(minY+maxY)/2});
   }
-  // Cluster by each component's own vertical center, then order within rows.
-  components.sort((a,b)=>a.centerY-b.centerY||a.minX-b.minX);
+  // Row assignment uses the measured top edge, not an assumed frame grid.
+  components.sort((a,b)=>a.minY-b.minY||a.minX-b.minX);
   const rows=[];
   for(const c of components){
-   let row=rows.find(r=>Math.abs(r.centerY-c.centerY)<52);
-   if(!row){row={centerY:c.centerY,items:[]};rows.push(row)}
-   row.items.push(c);row.centerY=row.items.reduce((sum,v)=>sum+v.centerY,0)/row.items.length;
+   let row=rows.find(r=>Math.abs(r.top-c.minY)<58);
+   if(!row){row={top:c.minY,items:[]};rows.push(row)}
+   row.items.push(c);row.top=row.items.reduce((sum,v)=>sum+v.minY,0)/row.items.length;
   }
-  rows.sort((a,b)=>a.centerY-b.centerY);
-  return rows.map(row=>row.items.sort((a,b)=>a.minX-b.minX).map(c=>{
-   const pad=3,l=Math.max(0,c.minX-pad),t=Math.max(0,c.minY-pad),r=Math.min(width,c.maxX+pad+1),b=Math.min(height,c.maxY+pad+1);
-   const frame=document.createElement('canvas');frame.width=r-l;frame.height=b-t;
+  rows.sort((a,b)=>a.top-b.top);
+  rows.forEach(r=>r.items.sort((a,b)=>a.minX-b.minX));
+  // Make isolated, alpha-bounded frame canvases first.
+  const ordered=rows.flatMap(r=>r.items).map(c=>{
+   const pad=3,l=Math.max(0,c.minX-pad),t=Math.max(0,c.minY-pad),right=Math.min(width,c.maxX+pad+1),bottom=Math.min(height,c.maxY+pad+1);
+   const frame=document.createElement('canvas');frame.width=right-l;frame.height=bottom-t;
    frame.getContext('2d').drawImage(dyeMakerCanvas,l,t,frame.width,frame.height,0,0,frame.width,frame.height);
    return frame;
-  }));
+  });
+  // Pack those isolated frames into a fresh transparent animation atlas.
+  // Every frame has a 14px transparent gutter to prevent atlas sampling bleed.
+  const gap=14,pad=4,cellH=Math.max(...ordered.map(f=>f.height))+pad*2;
+  const atlas=document.createElement('canvas');
+  atlas.width=ordered.reduce((sum,f)=>sum+f.width+gap+pad, pad);
+  atlas.height=cellH;
+  const ac=atlas.getContext('2d'),meta=[];let x=pad;
+  ordered.forEach(frame=>{
+   const y=pad+(cellH-pad*2-frame.height);
+   ac.drawImage(frame,x,y);
+   meta.push({x,y,w:frame.width,h:frame.height});
+   x+=frame.width+gap;
+  });
+  return {rows,atlas,meta};
  }
  dyeMakerSheet.onload=()=>{
   dyeMakerCanvas=keyMagentaSheet(dyeMakerSheet);
-  const poseRows=extractDyeMakerRows();
-  // The new sheet's second row is the dedicated six-pose run cycle.
-  dyeMakerRunFrames=poseRows[1]||[];
-  // Row three contains the standing idle poses and the dedicated crouching pickup pose.
-  dyeMakerIdleFrame=poseRows[2]?.[0]||null;
-  dyeMakerPickFrame=poseRows[2]?.[2]||null;
+  const extracted=extractDyeMakerSprites();
+  dyeMakerAtlas=extracted.atlas;dyeMakerFrameMeta=extracted.meta;
+  const rowFrames=extracted.rows.map(row=>row.items.map(c=>dyeMakerFrameMeta[extracted.rows.slice(0,extracted.rows.indexOf(row)).reduce((n,r)=>n+r.items.length,0)+row.items.indexOf(c)]));
+  // Both running rows are sequenced left-to-right into one continuous cycle.
+  dyeMakerRunFrames=[...(rowFrames[0]||[]),...(rowFrames[1]||[])];
+  // The next row supplies standing idle and crouching flower-pick poses.
+  dyeMakerIdleFrame=rowFrames[2]?.[0]||null;
+  dyeMakerPickFrame=rowFrames[2]?.[2]||null;
  };
  dyeTentSheet.onload=()=>{dyeTentCanvas=keyMagentaSheet(dyeTentSheet)};
  dyeVatSheet.onload=()=>{dyeVatCanvas=keyMagentaSheet(dyeVatSheet)};
@@ -524,15 +543,14 @@ function assignFlower(w){
  target.reservedBy=w.id;w.target=target;w.state='toFlower';return true;
 }
  function drawDyeMaker(w){
-  if(w.state==='inside')return;
+  if(w.state==='inside'||!dyeMakerAtlas)return;
   const running=w.state==='toPile'||w.state==='toTent'||w.state==='exitingTent';
   const frame=running?dyeMakerRunFrames[Math.floor(w.anim*10)%dyeMakerRunFrames.length]:w.state==='pickingPile'?dyeMakerPickFrame:dyeMakerIdleFrame;
-  if(!frame||!frame.width||!frame.height)return;
-  // Fit the complete alpha-trimmed artwork inside the old 62×58 footprint,
-  // preserving its proportions and keeping every pose on the same foot line.
-  const scale=Math.min(62/frame.width,58/frame.height),dw=frame.width*scale,dh=frame.height*scale;
+  if(!frame||!frame.w||!frame.h)return;
+  const scale=Math.min(62/frame.w,58/frame.h),dw=frame.w*scale,dh=frame.h*scale;
   ctx.save();ctx.translate(w.x,w.y);if((w.facing||1)<0)ctx.scale(-1,1);
-  ctx.imageSmoothingEnabled=true;ctx.drawImage(frame,-dw/2,-dh,dw,dh);
+  ctx.imageSmoothingEnabled=true;
+  ctx.drawImage(dyeMakerAtlas,frame.x,frame.y,frame.w,frame.h,-dw/2,-dh,dw,dh);
   if(w.carry){ctx.fillStyle='#d94b8b';ctx.beginPath();ctx.arc(17,-Math.max(20,dh*.52),4,0,Math.PI*2);ctx.fill()}
   ctx.restore();
  }
