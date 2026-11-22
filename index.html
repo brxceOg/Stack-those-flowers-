@@ -85,7 +85,7 @@ const W=2600,H=1900,center={x:W/2,y:H/2};
 const BUILD_GRID=96; // Shared footprint/alignment unit for all placeable structures.
 let dpr=1,viewW=0,viewH=0,camera={x:center.x,y:center.y,zoom:.78},placing=false,planningHousing=false,removingSection=false,selling=false,selectedStructure=null,pendingSale=null,selectionStart=null,selectionCurrent=null,menuOpen=false;
 let workerRunUpgradeLevel=0;
-let totalFlowers=10,totalDelivered=0,workers=[],houses=[],campfires=[],sections=[],flowers=[],particles=[],upgradePops=[],launched=[],tossedFlowers=[],last=performance.now(),toastTimer=0,saveClock=0,nextWorkerId=1;
+let totalFlowers=10,totalDelivered=0,workers=[],houses=[],campfires=[],dyeTents=[],dyeMakers=[],dyeVats=[],sections=[],flowers=[],particles=[],upgradePops=[],launched=[],tossedFlowers=[],last=performance.now(),toastTimer=0,saveClock=0,nextWorkerId=1,nextDyeMakerId=1;
 const SAVE_KEY='stackThoseFlowersSaveV2';
 try{localStorage.removeItem('stackThoseFlowersSaveV1')}catch(e){}
 const atlas=new Image();atlas.src='assets/flower-sprites.png?v=flower-crops-1122-0739';
@@ -104,6 +104,14 @@ const workerCarry=new Image();workerCarry.src='assets/worker-carry.png?v=matte-u
 const workerCarryIdle=new Image();workerCarryIdle.src='assets/worker-carry-idle.png?v=matte-unmix-1122-0723';
 const workerIdle=new Image();workerIdle.src='assets/worker-idle.png?v=matte-unmix-1122-0723';
 const workerToss=new Image();workerToss.src='assets/worker-toss.png?v=matte-unmix-1122-0723';
+ const dyeMakerSheet=new Image();dyeMakerSheet.src='IMG_1383.jpeg';
+ const dyeTentSheet=new Image();dyeTentSheet.src='IMG_1384.jpeg';
+ const dyeVatSheet=new Image();dyeVatSheet.src='IMG_1386.jpeg';
+ let dyeMakerCanvas=null,dyeTentCanvas=null,dyeVatCanvas=null;
+ function keyMagentaSheet(img,removeBottomBlack=false){const cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;const cx=cv.getContext('2d',{willReadFrequently:true});cx.drawImage(img,0,0);const im=cx.getImageData(0,0,cv.width,cv.height),d=im.data;for(let y=0;y<cv.height;y++)for(let x=0;x<cv.width;x++){const i=(y*cv.width+x)*4,r=d[i],g=d[i+1],b=d[i+2];if((r>175&&b>145&&g<90&&r-g>75&&b-g>65)||(removeBottomBlack&&y>=cv.height-7&&r<65&&g<65&&b<65))d[i+3]=0;}cx.putImageData(im,0,0);return cv}
+ dyeMakerSheet.onload=()=>{dyeMakerCanvas=keyMagentaSheet(dyeMakerSheet)};
+ dyeTentSheet.onload=()=>{dyeTentCanvas=keyMagentaSheet(dyeTentSheet)};
+ dyeVatSheet.onload=()=>{dyeVatCanvas=keyMagentaSheet(dyeVatSheet,true)};
 const launcherCollection=new Image();launcherCollection.src='assets/flower-launcher-collection.png?v=matte-unmix-1122-0723';
 const launcherCharge=new Image();launcherCharge.src='assets/flower-launcher-charge.png?v=matte-unmix-1122-0723';
 const launcherFire=new Image();launcherFire.src='assets/flower-launcher-fire.png?v=matte-unmix-1122-0723';
