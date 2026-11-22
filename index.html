@@ -50,11 +50,11 @@ let totalFlowers=10,totalDelivered=0,workers=[],houses=[],flowers=[],particles=[
 const SAVE_KEY='stackThoseFlowersSaveV1';
 const atlas=new Image();atlas.src='assets/flower-sprites.png';
 const pileAtlas=new Image();pileAtlas.src='assets/flower-pile-atlas.png';
-const workerWalk=new Image();workerWalk.src='assets/worker-walk.png?v=cartoon1375';
-const workerRun=new Image();workerRun.src='assets/worker-run.png?v=cartoon1375';
-const workerPick=new Image();workerPick.src='assets/worker-pick.png?v=cartoon1375';
-const workerCarry=new Image();workerCarry.src='assets/worker-carry.png?v=cartoon1375';
-const workerIdle=new Image();workerIdle.src='assets/worker-idle.png?v=cartoon1375';
+const workerWalk=new Image();workerWalk.src='assets/worker-walk.png?v=cartoon1375-final';
+const workerRun=new Image();workerRun.src='assets/worker-run.png?v=cartoon1375-final';
+const workerPick=new Image();workerPick.src='assets/worker-pick.png?v=cartoon1375-final';
+const workerCarry=new Image();workerCarry.src='assets/worker-carry.png?v=cartoon1375-final';
+const workerIdle=new Image();workerIdle.src='assets/worker-idle.png?v=cartoon1375-final';
 let atlasReady=false;atlas.onload=()=>{atlasReady=true}; 
 function resize(){dpr=Math.min(devicePixelRatio||1,2);viewW=innerWidth;viewH=innerHeight;canvas.width=Math.round(viewW*dpr);canvas.height=Math.round(viewH*dpr);ctx.setTransform(dpr,0,0,dpr,0,0)}
 addEventListener('resize',resize);resize();
@@ -92,8 +92,8 @@ function drawWorker(w){
  ctx.save();ctx.translate(w.x,w.y);ctx.scale(w.facing===-1?-1:1,1);
  const picking=w.state==='picking';
  const moving=w.state==='toFlower'||w.state==='toLauncher';
- const running=w.state==='toLauncher';
- const sheet=picking?workerPick:(w.state==='toLauncher'?(w.carry?workerCarry:workerRun):(w.state==='toFlower'?workerWalk:workerIdle));
+ const running=w.state==='toLauncher'||(w.state==='toFlower'&&w.target&&dist(w,w.target)>300);
+ const sheet=picking?workerPick:(w.state==='toLauncher'&&w.carry?workerCarry:(running?workerRun:(moving?workerWalk:workerIdle)));
  // Use only individually isolated frames from the new source sheet.
  if(!sheet.complete||!sheet.naturalWidth){ctx.restore();return}
  const FRAME_W=192,FRAME_H=192;
@@ -106,20 +106,6 @@ function drawWorker(w){
  ctx.translate(0,bob);
  ctx.imageSmoothingEnabled=true;
  ctx.drawImage(sheet,frame*FRAME_W,0,FRAME_W,FRAME_H,-34,-72,68,72);
- if(w.carry){
-  // Draw the exact flower variety the worker harvested, using the same atlas
-  // frame and source crop as flowers growing in the world.
-  if(atlasReady){
-   const flowerX={daisy:0,tulip:65,sunflower:130,pink:195}[w.carry]??0;
-   ctx.drawImage(atlas,flowerX,0,65,90,8,-42,18,25);
-  }else{
-   // Keep the held flower recognizable even before the atlas finishes loading.
-   ctx.strokeStyle='#3f8a43';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(23,-23);ctx.lineTo(23,-39);ctx.stroke();
-   ctx.fillStyle=w.carry==='pink'?'#e87bb1':w.carry==='tulip'?'#d94c5d':w.carry==='sunflower'?'#f5b83e':'#fff';
-   for(let i=0;i<6;i++){ctx.beginPath();ctx.arc(23+Math.cos(i*Math.PI/3)*5,-41+Math.sin(i*Math.PI/3)*5,3.2,0,Math.PI*2);ctx.fill()}
-   ctx.fillStyle='#e6b944';ctx.beginPath();ctx.arc(23,-41,2.8,0,Math.PI*2);ctx.fill();
-  }
- }
  ctx.restore()
 }
 function drawWorld(){
