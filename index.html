@@ -700,10 +700,10 @@ function assignFlower(w){
  for(const f of flowers){if(f.state==='picked'&&f.respawn>0){f.respawn-=dt;if(f.respawn<=0){f.state='growing';f.respawn=0;delete f.reservedBy}}}
  for(const w of workers){
   if(w.dyeBuffTimer>0)w.dyeBuffTimer=Math.max(0,w.dyeBuffTimer-dt);
-  if((w.state==='idle'||w.state==='search')&&dyeVats.length&&Math.random()<.0012*dt){
+  if((w.state==='idle'||w.state==='search'||w.state==='toFlower')&&dyeVats.length&&Math.random()<.00075*dt){
    const claimed=workers.filter(other=>other!==w&&other.drinkVat).map(other=>other.drinkVat);
    const vat=dyeVats.filter(v=>!claimed.includes(v)).sort((a,b)=>dist(w,a)-dist(w,b))[0];
-   if(vat){w.drinkVat=vat;w.state='toDyeVat';w.target={x:vat.x,y:vat.y+16};w.anim=0}
+   if(vat){if(w.state==='toFlower')releaseFlowerReservation(w);w.drinkVat=vat;w.state='toDyeVat';w.target={x:vat.x,y:vat.y+16};w.anim=0}
   }
   if(w.state==='toDyeVat'){
    if(!w.drinkVat||!dyeVats.includes(w.drinkVat)){w.drinkVat=null;w.target=null;w.state='search';w.anim=0}
