@@ -46,7 +46,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none;image-rendering:pi
 const canvas=document.getElementById('world'),ctx=canvas.getContext('2d');
 const W=2600,H=1900,center={x:W/2,y:H/2};
 let dpr=1,viewW=0,viewH=0,camera={x:center.x,y:center.y,zoom:.78},placing=false,menuOpen=false;
-let totalFlowers=10,totalDelivered=0,workers=[],houses=[],flowers=[],particles=[],launched=[],last=performance.now(),toastTimer=0,saveClock=0;
+let totalFlowers=10,totalDelivered=0,workers=[],houses=[],flowers=[],particles=[],launched=[],last=performance.now(),toastTimer=0,saveClock=0,nextWorkerId=1;
 const SAVE_KEY='stackThoseFlowersSaveV1';
 const atlas=new Image();atlas.src='assets/flower-atlas.png';
 const pileAtlas=new Image();pileAtlas.src='assets/flower-pile-atlas.png';
@@ -66,7 +66,7 @@ function seedWorld(){
  for(let i=0;i<100;i++){let x=rand(150,W-150),y=rand(130,H-130);if(Math.hypot(x-center.x,y-center.y)<260)continue;flowers.push({x,y,type:types[i%types.length],phase:rand(0,6.2),state:'growing',respawn:0})}
 }
 seedWorld();
-function loadGame(){try{const data=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!data||data.version!==1)return;totalFlowers=Math.max(0,Number(data.flowers)||0);totalDelivered=Math.max(0,Number(data.delivered)||0);houses=(Array.isArray(data.houses)?data.houses:[]).filter(h=>Number.isFinite(h.x)&&Number.isFinite(h.y));workers=houses.map(h=>({x:h.x,y:h.y+35,state:'search',anim:0,carry:null}));}catch(e){}}
+function loadGame(){try{const data=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!data||data.version!==1)return;totalFlowers=Math.max(0,Number(data.flowers)||0);totalDelivered=Math.max(0,Number(data.delivered)||0);houses=(Array.isArray(data.houses)?data.houses:[]).filter(h=>Number.isFinite(h.x)&&Number.isFinite(h.y));workers=houses.map(h=>({id:nextWorkerId++,x:h.x,y:h.y+35,state:'search',anim:0,carry:null,target:null,pickingFlower:null}));}catch(e){}}
 function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({version:1,flowers:totalFlowers,delivered:totalDelivered,houses}));}catch(e){}}
 loadGame();addEventListener('pagehide',saveGame);
 const launcher={x:center.x,y:center.y,scale:1};
@@ -120,13 +120,42 @@ function drawWorld(){
  ctx.restore();
 }
 function moveToward(obj,target,speed,dt){const dx=target.x-obj.x,dy=target.y-obj.y,d=Math.hypot(dx,dy);if(Math.abs(dx)>0.01)obj.facing=dx<0?-1:1;if(d<speed*dt+3){obj.x=target.x;obj.y=target.y;return true}obj.x+=dx/d*speed*dt;obj.y+=dy/d*speed*dt;obj.anim+=dt;return false}
+function releaseFlowerReservation(w){
+ if(w.target&&w.target.reservedBy===w.id)delete w.target.reservedBy;
+ if(w.pickingFlower&&w.pickingFlower.reservedBy===w.id)delete w.pickingFlower.reservedBy;
+ w.target=null;w.pickingFlower=null;
+}
+function assignFlower(w){
+ const available=flowers.filter(f=>f.state==='growing'&&!f.reservedBy);
+ const target=available.sort((a,b)=>dist(w,a)-dist(w,b))[0];
+ if(!target){w.state='search';return false}
+ // Reserve synchronously at selection time so another worker cannot claim it.
+ target.reservedBy=w.id;w.target=target;w.state='toFlower';return true;
+}
 function update(dt){
  saveClock+=dt;if(saveClock>=2.5){saveClock=0;saveGame()}
- for(const f of flowers){if(f.state==='picked'&&f.respawn>0){f.respawn-=dt;if(f.respawn<=0){f.state='growing';f.respawn=0}}}
+ for(const f of flowers){if(f.state==='picked'&&f.respawn>0){f.respawn-=dt;if(f.respawn<=0){f.state='growing';f.respawn=0;delete f.reservedBy}}}
  for(const w of workers){
-  if(w.state==='idle'||w.state==='search'){const f=flowers.filter(f=>f.state==='growing').sort((a,b)=>dist(w,a)-dist(w,b))[0];if(f){w.target=f;w.state='toFlower'}}
-  if(w.state==='toFlower'&&w.target){if(moveToward(w,w.target,88,dt)){w.target.state='picked';w.target.respawn=8;w.pickType=w.target.type;w.target=null;w.state='picking';w.timer=1.6;w.anim=0}}
-  else if(w.state==='picking'){w.anim+=dt;w.timer-=dt;if(w.timer<=0){w.carry=w.pickType||'daisy';w.pickType=null;w.state='toLauncher'}}
+  if(w.state==='idle'||w.state==='search')assignFlower(w);
+  if(w.state==='toFlower'){
+   if(!w.target||w.target.state!=='growing'||w.target.reservedBy!==w.id){releaseFlowerReservation(w);w.state='search';continue}
+   if(moveToward(w,w.target,88,dt)){
+    // Keep the flower growing and visible for the entire two-pose pick action.
+    w.pickingFlower=w.target;w.pickType=w.target.type;w.target=null;w.state='picking';w.timer=1.6;w.anim=0;
+   }
+  }
+  else if(w.state==='picking'){
+   w.anim+=dt;w.timer-=dt;
+   if(w.timer<=0){
+    const flower=w.pickingFlower;
+    if(flower&&flower.state==='growing'&&flower.reservedBy===w.id){
+     // Consume the flower once, only after both picking frames have completed.
+     flower.state='picked';flower.respawn=8;delete flower.reservedBy;
+     w.carry=w.pickType||flower.type||'daisy';w.state='toLauncher';
+    }else{releaseFlowerReservation(w);w.state='search'}
+    w.pickingFlower=null;w.pickType=null;
+   }
+  }
   else if(w.state==='toLauncher'){if(moveToward(w,launcher,105,dt)){w.state='deposit';w.timer=.35}}
   else if(w.state==='deposit'){w.timer-=dt;if(w.timer<=0){totalFlowers++;totalDelivered++;w.carry=null;w.state='search';launchFlower()}}
  }
@@ -139,7 +168,7 @@ function frame(now){const dt=Math.min(.04,(now-last)/1000);last=now;update(dt);d
 let pointer={x:0,y:0},drag=null,pointers=new Map(),pinchStart=null;
 canvas.addEventListener('pointerdown',e=>{pointer={x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===2){const a=[...pointers.values()];pinchStart={distance:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y),zoom:camera.zoom};drag=null;return}drag={id:e.pointerId,x:e.clientX,y:e.clientY,cx:camera.x,cy:camera.y,moved:false}});
 canvas.addEventListener('pointermove',e=>{pointer={x:e.clientX,y:e.clientY};if(pointers.has(e.pointerId))pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===2&&pinchStart){const a=[...pointers.values()],d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);camera.zoom=Math.max(.38,Math.min(1.35,pinchStart.zoom*d/pinchStart.distance));clampCamera();return}if(drag&&drag.id===e.pointerId){const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.abs(dx)+Math.abs(dy)>5)drag.moved=true;camera.x=drag.cx-dx/camera.zoom;camera.y=drag.cy-dy/camera.zoom;clampCamera()}});
-canvas.addEventListener('pointerup',e=>{const p=screenToWorld(e.clientX,e.clientY);if(placing&&drag&&!drag.moved&&pointers.size===1){if(Math.hypot(p.x-launcher.x,p.y-launcher.y)<150||houses.some(h=>dist(h,p)<90)){toast('Choose an open patch of grass');}else if(totalFlowers<10){toast('You need 10 flowers to build a house');}else{totalFlowers-=10;houses.push({x:p.x,y:p.y});workers.push({x:p.x,y:p.y+35,state:'search',anim:0,carry:null});saveGame();placing=false;document.getElementById('placeTip').classList.remove('show');toast('Worker house built! A helper is on the way 🌼')}}pointers.delete(e.pointerId);if(pointers.size<2)pinchStart=null;drag=null});
+canvas.addEventListener('pointerup',e=>{const p=screenToWorld(e.clientX,e.clientY);if(placing&&drag&&!drag.moved&&pointers.size===1){if(Math.hypot(p.x-launcher.x,p.y-launcher.y)<150||houses.some(h=>dist(h,p)<90)){toast('Choose an open patch of grass');}else if(totalFlowers<10){toast('You need 10 flowers to build a house');}else{totalFlowers-=10;houses.push({x:p.x,y:p.y});workers.push({id:nextWorkerId++,x:p.x,y:p.y+35,state:'search',anim:0,carry:null,target:null,pickingFlower:null});saveGame();placing=false;document.getElementById('placeTip').classList.remove('show');toast('Worker house built! A helper is on the way 🌼')}}pointers.delete(e.pointerId);if(pointers.size<2)pinchStart=null;drag=null});
 canvas.addEventListener('pointercancel',e=>{pointers.delete(e.pointerId);drag=null;pinchStart=null});
 document.getElementById('menuBtn').onclick=()=>{menuOpen=!menuOpen;document.getElementById('buildPanel').classList.toggle('open',menuOpen)};
 document.getElementById('houseButton').onclick=()=>{placing=true;menuOpen=false;document.getElementById('buildPanel').classList.remove('open');document.getElementById('placeTip').classList.add('show');toast('Tap an open spot to place your house')};
