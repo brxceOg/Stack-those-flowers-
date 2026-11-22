@@ -52,6 +52,7 @@ const atlas=new Image();atlas.src='assets/flower-atlas.png';
 const pileAtlas=new Image();pileAtlas.src='assets/flower-pile-atlas.png';
 const workerWalk=new Image();workerWalk.src='assets/worker-walk.png';
 const workerRun=new Image();workerRun.src='assets/worker-run.png';
+const workerPick=new Image();workerPick.src='assets/worker-pick.png';
 let atlasReady=false;atlas.onload=()=>{atlasReady=true}; 
 function resize(){dpr=Math.min(devicePixelRatio||1,2);viewW=innerWidth;viewH=innerHeight;canvas.width=Math.round(viewW*dpr);canvas.height=Math.round(viewH*dpr);ctx.setTransform(dpr,0,0,dpr,0,0)}
 addEventListener('resize',resize);resize();
@@ -87,12 +88,14 @@ function drawLauncher(){ctx.save();ctx.translate(launcher.x,launcher.y);ctx.fill
 function drawPile(){const x=launcher.x+170,y=launcher.y+52;const n=Math.min(totalDelivered,80),levels=Math.max(1,Math.ceil(Math.sqrt(n)));ctx.save();ctx.translate(x,y);ctx.fillStyle='#527c43';ctx.beginPath();ctx.ellipse(0,25,105,27,0,0,7);ctx.fill();for(let i=0;i<n;i++){const row=Math.floor(i/levels),col=i%levels;const px=(col-(Math.min(levels,n-row*levels)-1)/2)*24,py=-row*12;const c=['#fff1e0','#ec6b91','#e84f5d','#f3b735'][i%4];ctx.fillStyle='#367747';ctx.fillRect(px-3,py+2,6,14);ctx.fillStyle=c;ctx.beginPath();ctx.arc(px,py,8,0,7);ctx.fill();ctx.fillStyle='#ffdf79';ctx.beginPath();ctx.arc(px,py,3,0,7);ctx.fill()}ctx.restore()}
 function drawWorker(w){
  ctx.save();ctx.translate(w.x,w.y);ctx.scale(w.facing===-1?-1:1,1);
+ const picking=w.state==='picking';
  const moving=w.state==='toFlower'||w.state==='toLauncher';
  const running=w.state==='toLauncher';
- const sheet=running?workerRun:workerWalk;
- // Never substitute a drawn placeholder: wait for the extracted source artwork.
+ const sheet=picking?workerPick:(running?workerRun:workerWalk);
+ // Use only individually isolated frames from the new source sheet.
  if(!sheet.complete||!sheet.naturalWidth){ctx.restore();return}
- const frame=moving?(running?(Math.floor(w.anim*9)%5):(3+(Math.floor(w.anim*7)%2))):0;
+ const count=Math.max(1,Math.floor(sheet.naturalWidth/128));
+ const frame=picking?(Math.floor(w.anim*12)%count):(moving?(Math.floor(w.anim*(running?10:8))%count):0);
  const bob=moving?Math.sin(w.anim*(running?15:10))*1.2:0;
  ctx.translate(0,bob);
  ctx.imageSmoothingEnabled=false;
@@ -118,7 +121,8 @@ function update(dt){
  for(const f of flowers){if(f.state==='picked'&&f.respawn>0){f.respawn-=dt;if(f.respawn<=0){f.state='growing';f.respawn=0}}}
  for(const w of workers){
   if(w.state==='idle'||w.state==='search'){const f=flowers.filter(f=>f.state==='growing').sort((a,b)=>dist(w,a)-dist(w,b))[0];if(f){w.target=f;w.state='toFlower'}}
-  if(w.state==='toFlower'&&w.target){if(moveToward(w,w.target,88,dt)){w.target.state='picked';w.target.respawn=8;w.carry=w.target.type;w.state='toLauncher';w.target=null}}
+  if(w.state==='toFlower'&&w.target){if(moveToward(w,w.target,88,dt)){w.target.state='picked';w.target.respawn=8;w.pickType=w.target.type;w.target=null;w.state='picking';w.timer=.72;w.anim=0}}
+  else if(w.state==='picking'){w.anim+=dt;w.timer-=dt;if(w.timer<=0){w.carry=w.pickType||'daisy';w.pickType=null;w.state='toLauncher'}}
   else if(w.state==='toLauncher'){if(moveToward(w,launcher,105,dt)){w.state='deposit';w.timer=.35}}
   else if(w.state==='deposit'){w.timer-=dt;if(w.timer<=0){totalFlowers++;totalDelivered++;w.carry=null;w.state='search';launchFlower()}}
  }
