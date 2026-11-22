@@ -41,7 +41,7 @@ def remove_connected_paper(src, dst):
     print(f"{dst.relative_to(ROOT)}: {w}x{h}, transparent={int((alpha==0).sum())}, opaque={int((alpha==255).sum())}")
 
 def extract_worker_cycles():
-    # The actual source sheet has six walk poses and six run poses along its top row.
+    # Extract the actual source-sheet farmer walk and run poses as transparent animation frames.
     # Explicit, non-overlapping cells keep each pose isolated from its neighbors.
     atlas = Image.open(OUT / "flower-atlas.png").convert("RGBA")
     width, height = atlas.size
