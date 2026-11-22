@@ -83,6 +83,13 @@ Preserve both original files unchanged. All production sprite assets must be der
 - Dye maker tents are animated production buildings. The dye maker runs between the tent and the visible flower pile, carries one flower, physically enters the tent, and remains hidden throughout the 4.5-second brew before emerging. Keep the tent in front of the entering/exiting character for natural occlusion; preserve the physical vat spawn.
 
 
+## Default worker dye-drinking sequence
+- `IMG_1395.jpeg` is the dedicated default-worker dye-vat interaction sheet. It is a 4-column × 2-row sheet: the upper row is the four-frame approach/run cycle; the lower row is the four-frame pick-up-and-drink sequence.
+- Isolate all eight cells independently using the same connected pale-background removal and separator-line cleanup used for the final worker sheets. Preserve the worker's full outline, hand details, and the small drink prop; keep the original JPEG unchanged.
+- Pack the upper and lower rows into separate transparent four-frame strips using one shared scale and ground baseline. Play the drink strip once from beginning to end; do not loop it.
+- The worker only consumes a dye vat after reaching it. The vat must be removed from the world/save when the drinking sequence begins, and the worker returns to normal autonomous flower gathering when the sequence finishes.
+- A completed drink grants a temporary 90-second Rainbow Rush: +30% movement speed, +30% flower-picking speed, and a 20% chance for a delivery to yield one extra flower. Apply a moving rainbow-spectrum overlay and bright sweeping shine only to the worker's opaque character pixels. The effect and buffs expire automatically.
+
 ## Final default character sheets
 - Base worker: `IMG_1393.jpeg` (plain outfit, 4×4). Dye Maker: `IMG_1394.jpeg` (witch outfit, 4×4).
 - Treat each of the 16 cells as an independent frame. Remove the pale sheet background by edge-connected background separation, and discard horizontal spacer rules that touch the cell boundary. Do not retain any white/pink background pixels or spacer-line fragments. Preserve enclosed light artwork, dark outlines, and all character pixels. Trim each isolated frame with a small transparent margin, then pack on a shared baseline without stretching.
