@@ -298,5 +298,6 @@ pick = pick_row[:2]
 if len(pick) != 2:
     raise RuntimeError("Picking sequence must contain exactly the two crouch/grab poses")
 write_sheet(walk[3:], "walk")
-write_sheet(run[2:], "run")
+# Row 2 frames 0-2 are crouch/standing transitions; only frames 3-9 form the active run cycle.
+write_sheet(run[3:], "run")
 write_sheet(pick, "pick")
