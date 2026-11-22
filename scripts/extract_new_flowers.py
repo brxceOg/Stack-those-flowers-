@@ -70,7 +70,10 @@ def clean_cell(cell):
 def main():
     if not SOURCE.is_file():
         raise FileNotFoundError(SOURCE)
-    # Remove the sheet matte once on the full source image, while its true outer\n    # border is available for robust background-color estimation. Cropped cells\n    # are already transparent and must not re-estimate the matte from artwork.\n    sheet = remove_magenta_matte(Image.open(SOURCE).convert("RGB"))
+    # Remove the sheet matte once on the full source image, while its true outer
+    # border is available for robust background-color estimation. Cropped cells
+    # are already transparent and must not re-estimate the matte from artwork.
+    sheet = remove_magenta_matte(Image.open(SOURCE).convert("RGB"))
     # Each illustration has its own explicit crop. The uploaded sheet is NOT
     # a uniform 2x3 grid: the middle and bottom rows sit at different heights,
     # so dividing it into equal-height bands cuts petals/stems and can include
@@ -89,7 +92,6 @@ def main():
     atlas = Image.new("RGBA", (FRAME*len(NAMES), FRAME), (0,0,0,0))
     for i, name in enumerate(NAMES):
         cell = clean_cell(sheet.crop(crop_boxes[name]))
-        cell = clean_cell(cell)
         bbox = cell.getchannel("A").getbbox()
         if bbox is None:
             raise RuntimeError(f"{name} extraction is empty")
