@@ -46,7 +46,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none;image-rendering:au
 const canvas=document.getElementById('world'),ctx=canvas.getContext('2d');
 const W=2600,H=1900,center={x:W/2,y:H/2};
 let dpr=1,viewW=0,viewH=0,camera={x:center.x,y:center.y,zoom:.78},placing=false,menuOpen=false;
-let totalFlowers=10,totalDelivered=0,workers=[],houses=[],flowers=[],particles=[],launched=[],last=performance.now(),toastTimer=0,saveClock=0,nextWorkerId=1;
+let totalFlowers=10,totalDelivered=0,workers=[],houses=[],flowers=[],particles=[],launched=[],tossedFlowers=[],last=performance.now(),toastTimer=0,saveClock=0,nextWorkerId=1;
 const SAVE_KEY='stackThoseFlowersSaveV1';
 const atlas=new Image();atlas.src='assets/flower-sprites.png';
 const pileAtlas=new Image();pileAtlas.src='assets/flower-pile-atlas.png';
@@ -55,6 +55,7 @@ const workerRun=new Image();workerRun.src='assets/worker-run.png?v=cartoon1375-f
 const workerPick=new Image();workerPick.src='assets/worker-pick.png?v=cartoon1375-final';
 const workerCarry=new Image();workerCarry.src='assets/worker-carry.png?v=cartoon1375-final';
 const workerIdle=new Image();workerIdle.src='assets/worker-idle.png?v=cartoon1375-final';
+const workerToss=new Image();workerToss.src='assets/worker-toss.png?v=toss1379';
 const launcherCollection=new Image();launcherCollection.src='assets/flower-launcher-collection.png?v=launcher1378';
 const launcherCharge=new Image();launcherCharge.src='assets/flower-launcher-charge.png?v=launcher1378';
 const launcherFire=new Image();launcherFire.src='assets/flower-launcher-fire.png?v=launcher1378';
@@ -127,7 +128,7 @@ function drawWorker(w){
  const picking=w.state==='picking';
  const moving=w.state==='toFlower'||w.state==='toLauncher';
  const running=w.state==='toLauncher'||(w.state==='toFlower'&&w.target&&dist(w,w.target)>300);
- const sheet=picking?workerPick:(w.state==='toLauncher'&&w.carry?workerCarry:(running?workerRun:(moving?workerWalk:workerIdle)));
+ const sheet=w.state==='tossing'?(workerToss.complete&&workerToss.naturalWidth?workerToss:workerCarry):(picking?workerPick:(w.state==='toLauncher'&&w.carry?workerCarry:(running?workerRun:(moving?workerWalk:workerIdle))));
  // Use only individually isolated frames from the new source sheet.
  if(!sheet.complete||!sheet.naturalWidth){ctx.restore();return}
  const FRAME_W=192,FRAME_H=192;
@@ -151,6 +152,12 @@ function drawWorld(){
  for(const w of workers)drawWorker(w);
  if(placing){const p=screenToWorld(pointer.x,pointer.y);ctx.strokeStyle='#fff4a2';ctx.lineWidth=4/camera.zoom;ctx.setLineDash([8/camera.zoom,6/camera.zoom]);ctx.beginPath();ctx.arc(p.x,p.y,42,0,7);ctx.stroke();ctx.setLineDash([])}
  ctx.restore();
+}
+function drawTossedFlower(t){
+ const p=Math.min(1,t.time/t.duration),x=t.x+(t.tx-t.x)*p,y=t.y+(t.ty-t.y)*p-Math.sin(p*Math.PI)*42;
+ ctx.save();ctx.translate(x,y);ctx.rotate(p*5);ctx.fillStyle=t.color;
+ for(let k=0;k<6;k++){ctx.beginPath();ctx.ellipse(Math.cos(k*Math.PI/3)*5,Math.sin(k*Math.PI/3)*5,4,6,k*Math.PI/3,0,Math.PI*2);ctx.fill()}
+ ctx.fillStyle='#f4c84d';ctx.beginPath();ctx.arc(0,0,3.2,0,Math.PI*2);ctx.fill();ctx.restore();
 }
 function moveToward(obj,target,speed,dt){const dx=target.x-obj.x,dy=target.y-obj.y,d=Math.hypot(dx,dy);if(Math.abs(dx)>0.01)obj.facing=dx<0?-1:1;if(d<speed*dt+3){obj.x=target.x;obj.y=target.y;return true}obj.x+=dx/d*speed*dt;obj.y+=dy/d*speed*dt;obj.anim+=dt;return false}
 function releaseFlowerReservation(w){
@@ -190,10 +197,21 @@ function update(dt){
     w.pickingFlower=null;w.pickType=null;
    }
   }
-  else if(w.state==='toLauncher'){if(moveToward(w,launcher,105,dt)){w.state='deposit';w.timer=.35}}
-  else if(w.state==='deposit'){w.timer-=dt;if(w.timer<=0){totalFlowers++;totalDelivered++;w.carry=null;w.state='search';launchFlower()}}
+  else if(w.state==='toLauncher'){
+    if(dist(w,launcher)<125){w.state='tossing';w.timer=.82;w.anim=0;w.tossSent=false}
+    else moveToward(w,launcher,105,dt);
+   }
+   else if(w.state==='tossing'){
+    w.anim+=dt;w.timer-=dt;
+    if(!w.tossSent&&w.timer<=.52){
+     tossedFlowers.push({x:w.x,y:w.y-31,tx:launcher.x,ty:launcher.y-34,time:0,duration:.42,color:({daisy:'#fff0dc',tulip:'#e95363',sunflower:'#f3bd39',pink:'#ed83b4'})[w.carry]||'#fff0dc'});
+     w.tossSent=true;
+    }
+    if(w.timer<=0){totalFlowers++;totalDelivered++;w.carry=null;w.tossSent=false;w.state='search';launchFlower()}
+   }
  }
  for(const p of particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt}particles=particles.filter(p=>p.life>0);
+  for(const t of tossedFlowers)t.time+=dt;tossedFlowers=tossedFlowers.filter(t=>t.time<t.duration);
  for(const l of launched){l.t+=dt}launched=launched.filter(l=>l.t<.7);
  document.getElementById('workerCount').textContent=workers.length;document.getElementById('flowerCount').textContent=totalFlowers;
 }
