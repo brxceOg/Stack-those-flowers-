@@ -11,7 +11,6 @@ FRAME_DIR.mkdir(parents=True, exist_ok=True)
 SOURCE = ROOT / "IMG_1375.jpeg"
 COLS = ROWS = 4
 FRAME_W = FRAME_H = 192
-MAGENTA = np.array([255.0, 0.0, 255.0], dtype=np.float32)
 
 def remove_magenta_matte(image):
     """Remove only edge-connected magenta and un-matte antialiased edges."""
@@ -20,9 +19,11 @@ def remove_magenta_matte(image):
     h, w = rgb.shape[:2]
     r, g, b = rgb[:, :, 0], rgb[:, :, 1], rgb[:, :, 2]
     candidate = (r > 78) & (b > 78) & (g < 158) & ((r-g) > 42) & ((b-g) > 42)
+    # Sample the real JPEG matte from this cell's corners (the encoded magenta
+    # is slightly different from pure RGB 255,0,255).
+    background = np.median(np.array([rgb[0,0], rgb[0,-1], rgb[-1,0], rgb[-1,-1]]), axis=0)
     seen = np.zeros((h, w), dtype=bool)
     queue = deque()
-    print('matte diagnostics corner RGB:', rgb[0,0].astype(int).tolist(), 'candidate:', bool(candidate[0,0]), 'candidate pixels:', int(candidate.sum()))
     def add(y, x):
         if candidate[y, x] and not seen[y, x]:
             seen[y, x] = True
@@ -38,15 +39,16 @@ def remove_magenta_matte(image):
             if 0 <= ny < h and 0 <= nx < w:
                 add(ny, nx)
     if np.any(seen):
-        print('matte diagnostics edge-connected:', int(seen.sum()))
-        delta = np.max(np.abs(rgb - MAGENTA), axis=2)
-        alpha = np.clip(delta / 255.0, 0.0, 1.0)
-        # JPEG compression leaves tiny color deviations across the flat magenta
-        # field; discard those near-zero coverage pixels instead of preserving
-        # a faint opaque rectangle around every extracted pose.
+        # Estimate coverage from the green/blue/red channels using the expected
+        # yellow body and dark-outline contrast. This correctly un-mattes both
+        # pale skin edges and dark outlines without producing a green fringe.
+        green_coverage = (rgb[:, :, 1] - background[1]) / 191.0
+        blue_coverage = (background[2] - rgb[:, :, 2]) / 213.0
+        red_coverage = (background[0] - rgb[:, :, 0]) / 200.0
+        alpha = np.clip(np.maximum.reduce([green_coverage, blue_coverage, red_coverage]), 0.0, 1.0)
         alpha[alpha < 0.13] = 0.0
         safe = np.maximum(alpha, 1.0/255.0)
-        unmatte = (rgb - (1.0-alpha[:, :, None])*MAGENTA) / safe[:, :, None]
+        unmatte = (rgb - (1.0-alpha[:, :, None])*background) / safe[:, :, None]
         rgba[seen, :3] = np.clip(unmatte[seen], 0, 255).astype(np.uint8)
         rgba[seen, 3] = np.clip(alpha[seen]*255.0, 0, 255).astype(np.uint8)
     rgba[rgba[:, :, 3] == 0, :3] = 0
@@ -80,7 +82,6 @@ def keep_main_character_component(image):
     if not components:
         return Image.fromarray(rgba, "RGBA")
     components.sort(key=len, reverse=True)
-    print("alpha components:", [(len(p), (min(x for y,x in p), min(y for y,x in p), max(x for y,x in p)+1, max(y for y,x in p)+1)) for p in components[:6]])
     main = components[0]
     anchor = np.zeros((h, w), dtype=bool)
     for y, x in main:
@@ -110,7 +111,6 @@ def extract_cell(sheet, row, col):
     x0, y0 = col*cell_w, row*cell_h
     cell = remove_magenta_matte(sheet.crop((x0, y0, x0+cell_w, y0+cell_h)))
     cell = keep_main_character_component(cell)
-    print('cell diagnostics:', row, col, 'alpha bbox:', cell.getchannel('A').getbbox())
     bbox = cell.getchannel("A").getbbox()
     if bbox is None:
         raise RuntimeError(f"Empty new-cartoon pose at row {row}, column {col}")
