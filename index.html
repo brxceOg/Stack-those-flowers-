@@ -541,7 +541,8 @@ document.getElementById('structureUpgradeOne').onclick=()=>{
   for(const worker of workers)upgradePops.push({x:worker.x,y:worker.y,time:0,duration:1.05});
   saveGame();
  toast('Worker Run Speed upgraded to +'+(workerRunUpgradeLevel*5)+'% · all workers improved');
- openStructureMenu(selectedStructure.type,selectedStructure.ref,...(()=>{const r=document.getElementById('game').getBoundingClientRect();const m=document.getElementById('structureMenu').getBoundingClientRect();return[r.left+m.left,r.top+m.top+m.height/2]})());
+ // Refresh the next price in place; do not reopen or reposition the menu.
+ document.getElementById('structureUpgradeOne').textContent='🏃 Run Speed +5% · '+workerRunUpgradeCost()+' flowers';
 };
 function hideStructureMenu(){document.getElementById('structureMenu').classList.remove('show')}
 function openStructureMenu(type,ref,clientX,clientY){
