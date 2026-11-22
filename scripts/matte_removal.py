@@ -16,7 +16,7 @@ def remove_magenta_matte(image):
     bg = np.median(samples, axis=0)
     dist = np.sqrt(np.sum((rgb - bg) ** 2, axis=2))
     chroma = np.minimum(rgb[:, :, 0], rgb[:, :, 2]) - rgb[:, :, 1]
-    candidate = (dist < 250) & (chroma > 8) & (rgb[:, :, 0] > 65) & (rgb[:, :, 2] > 55)
+    candidate = (dist < 280) & (chroma > 18) & (rgb[:, :, 0] > 130) & (rgb[:, :, 2] > 115)
     seeds = np.zeros((h, w), dtype=bool)
     seeds[0, :] = candidate[0, :]
     seeds[-1, :] = candidate[-1, :]
@@ -36,11 +36,11 @@ def remove_magenta_matte(image):
     alpha[~connected] = 1.0
     alpha[connected & (alpha < 0.055)] = 0.0
     recover = connected & (alpha >= 0.055)
-    recovered = np.zeros_like(rgb)
-    a = alpha[recover][:, None]
-    recovered[recover] = np.clip((rgb[recover] - (1.0 - a) * bg) / a, 0, 255)
+    # Use the nearest uncontaminated foreground color for the fringe RGB.
+    # This avoids inventing green/pale edge colors when the JPEG matte is
+    # mixed with a dark outline; alpha still carries the antialias coverage.
     out_rgb = rgb.copy()
-    out_rgb[recover] = recovered[recover]
+    out_rgb[recover] = foreground[recover]
     out_rgb[connected & ~recover] = 0
     out = np.dstack((out_rgb, alpha * 255.0)).round().clip(0, 255).astype(np.uint8)
     out[out[:, :, 3] == 0, :3] = 0
