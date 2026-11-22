@@ -9,8 +9,10 @@ on:
       - "IMG_1372.jpeg"
       - "IMG_1373.jpeg"
       - "IMG_1375.jpeg"
+      - "IMG_1378.jpeg"
       - "scripts/extract_transparency.py"
       - "scripts/extract_worker_sheet.py"
+      - "scripts/extract_flower_launcher.py"
       - ".github/workflows/extract-assets.yml"
   workflow_dispatch:
 permissions:
@@ -29,11 +31,13 @@ jobs:
         run: python scripts/extract_transparency.py
       - name: Extract isolated cartoon worker animations
         run: python scripts/extract_worker_sheet.py
+      - name: Extract flower launcher collection, charge, and fire frames
+        run: python scripts/extract_flower_launcher.py
       - name: Commit generated transparent PNG atlases
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add assets/flower-atlas.png assets/flower-pile-atlas.png assets/flower-sprites.png assets/worker-walk.png assets/worker-run.png assets/worker-idle.png assets/worker-pick.png assets/worker-carry.png assets/worker-frames/*.png
+          git add assets/flower-atlas.png assets/flower-pile-atlas.png assets/flower-sprites.png assets/worker-walk.png assets/worker-run.png assets/worker-idle.png assets/worker-pick.png assets/worker-carry.png assets/worker-frames/*.png assets/flower-launcher-collection.png assets/flower-launcher-charge.png assets/flower-launcher-fire.png assets/flower-launcher-frames/*.png
           if git diff --cached --quiet; then
             echo "No generated asset changes."
           else
