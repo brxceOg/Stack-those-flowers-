@@ -104,50 +104,61 @@ const workerCarry=new Image();workerCarry.src='assets/worker-carry.png?v=matte-u
 const workerCarryIdle=new Image();workerCarryIdle.src='assets/worker-carry-idle.png?v=matte-unmix-1122-0723';
 const workerIdle=new Image();workerIdle.src='assets/worker-idle.png?v=matte-unmix-1122-0723';
 const workerToss=new Image();workerToss.src='assets/worker-toss.png?v=matte-unmix-1122-0723';
- const dyeMakerSheet=new Image();dyeMakerSheet.src='IMG_1383.jpeg';
+ const dyeMakerSheet=new Image();dyeMakerSheet.src='IMG_1388.jpeg?v=dye-maker-new-sheet-1122';
  const dyeTentSheet=new Image();dyeTentSheet.src='IMG_1384.jpeg';
  const dyeVatSheet=new Image();dyeVatSheet.src='IMG_1386.jpeg';
  let dyeMakerCanvas=null,dyeTentCanvas=null,dyeVatCanvas=null;
  let dyeMakerRunFrames=[],dyeMakerIdleFrame=null,dyeMakerPickFrame=null;
  function keyMagentaSheet(img){const cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;const cx=cv.getContext('2d',{willReadFrequently:true});cx.drawImage(img,0,0);const im=cx.getImageData(0,0,cv.width,cv.height),d=im.data;for(let y=0;y<cv.height;y++)for(let x=0;x<cv.width;x++){const i=(y*cv.width+x)*4,r=d[i],g=d[i+1],b=d[i+2];if(r>175&&b>145&&g<90&&r-g>75&&b-g>65)d[i+3]=0;}cx.putImageData(im,0,0);return cv}
- // Segment sprites by their actual connected, non-magenta artwork. No fixed
- // frame grid or guessed per-pose rectangles are used: every crop is the
- // measured boundary of one isolated sprite component.
- function extractDyeMakerSprites(y0,y1,minArea=90){
+ // Segment the entire keyed sheet into connected artwork components.
+ // Each output canvas is bounded by that sprite's measured opaque pixels;
+ // no fixed cell widths or per-frame crop rectangles are used.
+ function extractDyeMakerRows(minArea=90){
   const width=dyeMakerCanvas.width,height=dyeMakerCanvas.height;
   const data=dyeMakerCanvas.getContext('2d',{willReadFrequently:true}).getImageData(0,0,width,height).data;
-  const regionH=y1-y0,visited=new Uint8Array(width*regionH),stack=new Int32Array(width*regionH),components=[];
-  for(let ry=0;ry<regionH;ry++)for(let x=0;x<width;x++){
-   const seed=ry*width+x,alpha=data[((y0+ry)*width+x)*4+3];
-   if(alpha<=12||visited[seed])continue;
-   let top=ry,bottom=ry,left=x,right=x,count=0,sp=0;stack[sp++]=seed;visited[seed]=1;
+  const visited=new Uint8Array(width*height),stack=new Int32Array(width*height),components=[];
+  for(let y=0;y<height;y++)for(let x=0;x<width;x++){
+   const seed=y*width+x;
+   if(visited[seed]||data[seed*4+3]<=12)continue;
+   let minX=x,maxX=x,minY=y,maxY=y,count=0,sp=0;
+   stack[sp++]=seed;visited[seed]=1;
    while(sp){
     const p=stack[--sp],px=p%width,py=(p/width)|0;count++;
-    if(px<left)left=px;if(px>right)right=px;if(py<top)top=py;if(py>bottom)bottom=py;
+    if(px<minX)minX=px;if(px>maxX)maxX=px;if(py<minY)minY=py;if(py>maxY)maxY=py;
     for(let oy=-1;oy<=1;oy++)for(let ox=-1;ox<=1;ox++){
-     if(!ox&&!oy)continue;const nx=px+ox,ny=py+oy;
-     if(nx<0||nx>=width||ny<0||ny>=regionH)continue;
+     if(!ox&&!oy)continue;
+     const nx=px+ox,ny=py+oy;
+     if(nx<0||nx>=width||ny<0||ny>=height)continue;
      const ni=ny*width+nx;
-     if(!visited[ni]&&data[((y0+ny)*width+nx)*4+3]>12){visited[ni]=1;stack[sp++]=ni}
+     if(!visited[ni]&&data[ni*4+3]>12){visited[ni]=1;stack[sp++]=ni}
     }
    }
-   if(count>=minArea)components.push({left,top:top+y0,right,bottom:bottom+y0,count});
+   if(count>=minArea)components.push({minX,maxX,minY,maxY,count,centerY:(minY+maxY)/2});
   }
-  components.sort((a,b)=>a.left-b.left);
-  return components.map(c=>{
-   const pad=2,l=Math.max(0,c.left-pad),t=Math.max(y0,c.top-pad),r=Math.min(width,c.right+pad+1),b=Math.min(y1,c.bottom+pad+1);
+  // Cluster by each component's own vertical center, then order within rows.
+  components.sort((a,b)=>a.centerY-b.centerY||a.minX-b.minX);
+  const rows=[];
+  for(const c of components){
+   let row=rows.find(r=>Math.abs(r.centerY-c.centerY)<52);
+   if(!row){row={centerY:c.centerY,items:[]};rows.push(row)}
+   row.items.push(c);row.centerY=row.items.reduce((sum,v)=>sum+v.centerY,0)/row.items.length;
+  }
+  rows.sort((a,b)=>a.centerY-b.centerY);
+  return rows.map(row=>row.items.sort((a,b)=>a.minX-b.minX).map(c=>{
+   const pad=3,l=Math.max(0,c.minX-pad),t=Math.max(0,c.minY-pad),r=Math.min(width,c.maxX+pad+1),b=Math.min(height,c.maxY+pad+1);
    const frame=document.createElement('canvas');frame.width=r-l;frame.height=b-t;
    frame.getContext('2d').drawImage(dyeMakerCanvas,l,t,frame.width,frame.height,0,0,frame.width,frame.height);
    return frame;
-  });
+  }));
  }
  dyeMakerSheet.onload=()=>{
   dyeMakerCanvas=keyMagentaSheet(dyeMakerSheet);
-  const topRun=extractDyeMakerSprites(0,184),bottomRun=extractDyeMakerSprites(184,368);
-  dyeMakerRunFrames=[...topRun,...bottomRun];
-  const lowerPoses=extractDyeMakerSprites(368,552);
-  dyeMakerIdleFrame=lowerPoses[0]||null;
-  dyeMakerPickFrame=lowerPoses[2]||null;
+  const poseRows=extractDyeMakerRows();
+  // The new sheet's second row is the dedicated six-pose run cycle.
+  dyeMakerRunFrames=poseRows[1]||[];
+  // Row three contains the standing idle poses and the dedicated crouching pickup pose.
+  dyeMakerIdleFrame=poseRows[2]?.[0]||null;
+  dyeMakerPickFrame=poseRows[2]?.[2]||null;
  };
  dyeTentSheet.onload=()=>{dyeTentCanvas=keyMagentaSheet(dyeTentSheet)};
  dyeVatSheet.onload=()=>{dyeVatCanvas=keyMagentaSheet(dyeVatSheet)};
