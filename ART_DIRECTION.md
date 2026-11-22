@@ -66,3 +66,5 @@ Preserve both original files unchanged. All production sprite assets must be der
 
 
 - Each completed planned housing area is rendered as a distinct worked-earth plot with a warm brown soil surface, subtle soil texture, and a narrow grassy edge. The patch follows the exact planned grid rectangle; the blue overlay is reserved for an area currently being drawn.
+
+- Flower spawn points must remain outside every completed planned housing plot. When a new plot is drawn, any existing flower point it covers is relocated to open garden ground; flower count, type, and current growth/respawn state are preserved. This changes spawn locations only, not the spawn count or regrowth timing.
