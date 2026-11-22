@@ -235,7 +235,8 @@ function keyMagentaSheet(img){const cv=document.createElement('canvas');cv.width
 workerDrinkSheet.onload=()=>{
  // IMG_1395 is used only for its lower-row four-frame pick-up-and-drink sequence.
  // Vat approach movement continues to use the worker's existing walk/run sheets.
- // The source has a visible horizontal rule above the lower row; the lower-row heads start above the 50% split. Start that row at the actual artwork boundary so no head pixels are discarded.\n  const poses=extractGridPoseCanvases(workerDrinkSheet,2,10,[0,86,workerDrinkSheet.naturalHeight]);
+ // The source has a visible horizontal rule above the lower row; the lower-row heads start above the 50% split. Start that row at the actual artwork boundary so no head pixels are discarded.
+  const poses=extractGridPoseCanvases(workerDrinkSheet,2,10,[0,86,workerDrinkSheet.naturalHeight]);
  const drinkFrames=poses.slice(4,8);
  
  setCanvasImage(workerDrinkSequence,packDrinkPoseStrip(drinkFrames));
