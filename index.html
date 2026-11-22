@@ -99,7 +99,7 @@ function drawWorker(w){
  const bob=moving?Math.sin(w.anim*(running?15:10))*1.2:0;
  ctx.translate(0,bob);
  ctx.imageSmoothingEnabled=false;
- ctx.drawImage(sheet,frame*128,0,128,160,-25,-62,50,62);
+ ctx.drawImage(sheet,frame*160,0,160,208,-25,-62,50,62);
  if(w.carry){
   ctx.fillStyle=w.carry==='pink'?'#eb78b1':w.carry==='tulip'?'#df4e60':w.carry==='sunflower'?'#f4bb39':'#fff';
   ctx.beginPath();ctx.arc(20,-35,8,0,7);ctx.fill();
