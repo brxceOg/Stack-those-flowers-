@@ -86,7 +86,7 @@ def main():
     # Derive cell boundaries from the uploaded sheet dimensions; its six illustrations
     # are arranged in two columns and three staggered-height rows.
     x_edges = (0, sheet.width // 2, sheet.width)
-    y_edges = (0, round(sheet.height * 0.425), round(sheet.height * 0.75), sheet.height)
+    y_edges = (0, round(sheet.height * 0.425), round(sheet.height * 0.715), sheet.height)
     atlas = Image.new("RGBA", (FRAME*len(NAMES), FRAME), (0,0,0,0))
     for i, name in enumerate(NAMES):
         row, col = divmod(i, 2)
