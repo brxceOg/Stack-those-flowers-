@@ -374,7 +374,30 @@ function drawGround(){
 }
 function drawBush(x,y){ctx.fillStyle='#4e8849';ctx.beginPath();ctx.arc(x,y,23,0,7);ctx.fill();ctx.fillStyle='#72a95a';ctx.beginPath();ctx.arc(x-7,y-7,12,0,7);ctx.fill()}
 function drawFlower(f){if(f.state==='picked')return;const sway=Math.sin(performance.now()/520+f.phase)*2;ctx.save();ctx.translate(f.x,f.y);ctx.translate(sway,0);if(atlasReady){const sx=FLOWER_SOURCE_X[f.type]??0;ctx.drawImage(atlas,sx,0,FLOWER_FRAME,FLOWER_FRAME,-22,-44,44,44)}else{ctx.strokeStyle='#347b3c';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(0,18);ctx.lineTo(0,-10);ctx.stroke();ctx.fillStyle=f.type==='tulip'?'#d94c5d':f.type==='rose'?'#e85b57':f.type==='red-bouquet'?'#d94b4b':f.type==='bluebells'?'#667bd7':f.type==='sunflower'?'#f5b83e':'#fff';for(let i=0;i<7;i++){ctx.beginPath();ctx.arc(Math.cos(i*6.28/7)*9,-14+Math.sin(i*6.28/7)*9,6,0,7);ctx.fill()}ctx.fillStyle='#e6b944';ctx.beginPath();ctx.arc(0,-14,5,0,7);ctx.fill()}ctx.restore()}
-function drawDyeTent(t){if(!dyeTentCanvas)return;ctx.save();ctx.translate(t.x,t.y);const brewing=!!t.brewing;const frame=brewing?Math.floor((t.brewAnim||0)*7)%4:Math.floor(campfireClock*1.2)%4;ctx.fillStyle='rgba(42,75,39,.2)';ctx.beginPath();ctx.ellipse(0,16,59,12,0,0,Math.PI*2);ctx.fill();ctx.imageSmoothingEnabled=true;ctx.drawImage(dyeTentCanvas,frame*346,brewing?368:0,346,368,-66,-96,132,140);if(selectedStructure&&selectedStructure.type==='tent'&&selectedStructure.ref===t){ctx.strokeStyle='#ffe28a';ctx.lineWidth=3;ctx.strokeRect(-68,-98,136,140)}ctx.restore()}
+let dyeTentFrameBottoms=null;
+function getDyeTentFrameBottoms(){
+ if(dyeTentFrameBottoms||!dyeTentCanvas)return dyeTentFrameBottoms;
+ const cx=dyeTentCanvas.getContext('2d',{willReadFrequently:true}),out=[];
+ for(let row=0;row<2;row++)for(let col=0;col<4;col++){
+  const im=cx.getImageData(col*346,row*368,346,368),d=im.data;let bottom=-1;
+  for(let y=367;y>=0&&bottom<0;y--)for(let x=0;x<346;x++)if(d[(y*346+x)*4+3]>8){bottom=y;break}
+  out.push(bottom<0?367:bottom);
+ }
+ dyeTentFrameBottoms=out;return out;
+}
+function drawDyeTent(t){
+ if(!dyeTentCanvas)return;
+ ctx.save();ctx.translate(t.x,t.y);
+ const brewing=!!t.brewing,row=brewing?1:0,frame=brewing?Math.floor((t.brewAnim||0)*7)%4:Math.floor(campfireClock*1.2)%4;
+ const frameIndex=row*4+frame,bottoms=getDyeTentFrameBottoms(),bottom=bottoms?bottoms[frameIndex]:367;
+ // The tent is a fixed structure: align the visible bottom edge of every
+ // animation cel to one world-space baseline so brewing art cannot make it dip.
+ const drawY=-96+(367-bottom)*(140/368);
+ ctx.fillStyle='rgba(42,75,39,.2)';ctx.beginPath();ctx.ellipse(0,16,59,12,0,0,Math.PI*2);ctx.fill();
+ ctx.imageSmoothingEnabled=true;ctx.drawImage(dyeTentCanvas,frame*346,row*368,346,368,-66,drawY,132,140);
+ if(selectedStructure&&selectedStructure.type==='tent'&&selectedStructure.ref===t){ctx.strokeStyle='#ffe28a';ctx.lineWidth=3;ctx.strokeRect(-68,-98,136,140)}
+ ctx.restore()
+}
  function drawDyeVat(v){if(!dyeVatCanvas)return;const p=Math.min(1,(v.age||0)/.55),x=v.x+((v.tx??v.x)-v.x)*p,y=v.y+((v.ty??v.y)-v.y)*p-Math.sin(p*Math.PI)*26+Math.sin(campfireClock*2.4+v.x*.01)*1.5;ctx.save();ctx.translate(x,y);ctx.rotate((1-p)*.32);ctx.imageSmoothingEnabled=true;ctx.drawImage(dyeVatCanvas,v.type*103.5,0,103.5,84,-15,-25,30,25);ctx.restore()}
  function drawHouse(h){ctx.save();ctx.translate(h.x,h.y);ctx.fillStyle='rgba(42,75,39,.28)';ctx.beginPath();ctx.ellipse(0,-7,53,13,0,0,Math.PI*2);ctx.fill();if(workerHouse.complete&&workerHouse.naturalWidth>=896){ctx.imageSmoothingEnabled=true;ctx.drawImage(workerHouse,0,0,224,224,-48,-96,96,96)}if(selectedStructure&&selectedStructure.type==='house'&&selectedStructure.ref===h){ctx.strokeStyle='#ffe28a';ctx.lineWidth=3;ctx.strokeRect(-50,-98,100,100)}ctx.restore()}
 function isWorkerBoosted(w){
