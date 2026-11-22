@@ -13,6 +13,7 @@ on:
       - "IMG_1379.jpeg"
       - "IMG_1380.jpeg"
       - "IMG_1381.jpeg"
+      - "IMG_1382.jpeg"
       - "scripts/extract_transparency.py"
       - "scripts/extract_worker_sheet.py"
       - "scripts/matte_removal.py"
@@ -20,6 +21,7 @@ on:
       - "scripts/extract_worker_toss.py"
       - "scripts/extract_new_flowers.py"
       - "scripts/extract_worker_house.py"
+      - "scripts/extract_campfire.py"
       - ".github/workflows/extract-assets.yml"
   workflow_dispatch:
 permissions:
@@ -46,11 +48,13 @@ jobs:
         run: python scripts/extract_new_flowers.py
       - name: Extract transparent worker-house door frames
         run: python scripts/extract_worker_house.py
+      - name: Extract transparent campfire animation frames
+        run: python scripts/extract_campfire.py
       - name: Commit generated transparent PNG atlases
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add assets/flower-atlas.png assets/flower-pile-atlas.png assets/flower-sprites.png assets/worker-walk.png assets/worker-run.png assets/worker-idle.png assets/worker-pick.png assets/worker-carry.png assets/worker-carry-idle.png assets/worker-frames/*.png assets/flower-launcher-collection.png assets/flower-launcher-charge.png assets/flower-launcher-fire.png assets/flower-launcher-frames/*.png assets/worker-toss.png assets/worker-frames/toss-01.png assets/flower-frames/*.png assets/worker-house.png assets/worker-house-frames/*.png
+          git add assets/flower-atlas.png assets/flower-pile-atlas.png assets/flower-sprites.png assets/worker-walk.png assets/worker-run.png assets/worker-idle.png assets/worker-pick.png assets/worker-carry.png assets/worker-carry-idle.png assets/worker-frames/*.png assets/flower-launcher-collection.png assets/flower-launcher-charge.png assets/flower-launcher-fire.png assets/flower-launcher-frames/*.png assets/worker-toss.png assets/worker-frames/toss-01.png assets/flower-frames/*.png assets/worker-house.png assets/worker-house-frames/*.png assets/campfire-atlas.png assets/campfire-frames/*.png
           if git diff --cached --quiet; then
             echo "No generated asset changes."
           else
