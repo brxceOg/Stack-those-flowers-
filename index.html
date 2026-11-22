@@ -45,6 +45,37 @@ canvas{display:block;width:100%;height:100%;touch-action:none;image-rendering:au
 (()=>{
 'use strict';
 const canvas=document.getElementById('world'),ctx=canvas.getContext('2d');
+/* Lightweight WebGL bloom composite. The original 2D renderer stays intact;
+   this fullscreen pass adds a restrained glow around bright garden colors. */
+const bloomCanvas=document.createElement('canvas');
+bloomCanvas.id='bloomPost';
+bloomCanvas.style.cssText='position:absolute;inset:0;width:100%;height:100%;pointer-events:none';
+document.getElementById('game').appendChild(bloomCanvas);
+const gl=bloomCanvas.getContext('webgl',{alpha:false,antialias:false,premultipliedAlpha:false});
+let bloomProgram=null,bloomTexture=null,bloomActive=false;
+if(gl){
+ const vs='attribute vec2 p;varying vec2 uv;void main(){uv=p*.5+.5;gl_Position=vec4(p,0.,1.);}';
+ const fs='precision mediump float;varying vec2 uv;uniform sampler2D scene;uniform vec2 texel;void main(){vec4 base=texture2D(scene,uv);vec3 glow=vec3(0.);float weights[9];weights[0]=.20;weights[1]=.12;weights[2]=.12;weights[3]=.12;weights[4]=.12;weights[5]=.08;weights[6]=.08;weights[7]=.08;weights[8]=.08;vec2 offsets[9];offsets[0]=vec2(0.,0.);offsets[1]=vec2(1.,0.);offsets[2]=vec2(-1.,0.);offsets[3]=vec2(0.,1.);offsets[4]=vec2(0.,-1.);offsets[5]=vec2(1.,1.);offsets[6]=vec2(-1.,1.);offsets[7]=vec2(1.,-1.);offsets[8]=vec2(-1.,-1.);for(int i=0;i<9;i++){vec3 c=texture2D(scene,uv+offsets[i]*texel*3.0).rgb;float l=dot(c,vec3(.2126,.7152,.0722));glow+=c*smoothstep(.58,.88,l)*weights[i];}vec3 result=base.rgb+glow*.24;gl_FragColor=vec4(result,1.);}';
+ const compile=(type,src)=>{const sh=gl.createShader(type);gl.shaderSource(sh,src);gl.compileShader(sh);if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS)){gl.deleteShader(sh);return null}return sh};
+ const v=compile(gl.VERTEX_SHADER,vs),f=compile(gl.FRAGMENT_SHADER,fs);
+ if(v&&f){bloomProgram=gl.createProgram();gl.attachShader(bloomProgram,v);gl.attachShader(bloomProgram,f);gl.linkProgram(bloomProgram);bloomActive=gl.getProgramParameter(bloomProgram,gl.LINK_STATUS);gl.deleteShader(v);gl.deleteShader(f)}
+ if(bloomActive){
+  bloomTexture=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,bloomTexture);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+  const buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
+  gl.useProgram(bloomProgram);const loc=gl.getAttribLocation(bloomProgram,'p');gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
+  gl.uniform1i(gl.getUniformLocation(bloomProgram,'scene'),0);
+ }else bloomCanvas.style.display='none';
+}else bloomCanvas.style.display='none';
+function renderBloom(){
+ if(!bloomActive)return;
+ gl.viewport(0,0,bloomCanvas.width,bloomCanvas.height);gl.useProgram(bloomProgram);
+ gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,bloomTexture);
+ gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,canvas);
+ gl.uniform2f(gl.getUniformLocation(bloomProgram,'texel'),1/bloomCanvas.width,1/bloomCanvas.height);
+ gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+}
 const W=2600,H=1900,center={x:W/2,y:H/2};
 const BUILD_GRID=96; // Shared footprint/alignment unit for all placeable structures.
 let dpr=1,viewW=0,viewH=0,camera={x:center.x,y:center.y,zoom:.78},placing=false,planningHousing=false,removingSection=false,selectionStart=null,selectionCurrent=null,menuOpen=false;
@@ -68,7 +99,7 @@ const launcherCollection=new Image();launcherCollection.src='assets/flower-launc
 const launcherCharge=new Image();launcherCharge.src='assets/flower-launcher-charge.png?v=matte-unmix-1122-0723';
 const launcherFire=new Image();launcherFire.src='assets/flower-launcher-fire.png?v=matte-unmix-1122-0723';
 let atlasReady=false;atlas.onload=()=>{atlasReady=true}; 
-function resize(){dpr=Math.min(devicePixelRatio||1,2);viewW=innerWidth;viewH=innerHeight;canvas.width=Math.round(viewW*dpr);canvas.height=Math.round(viewH*dpr);ctx.setTransform(dpr,0,0,dpr,0,0)}
+function resize(){dpr=Math.min(devicePixelRatio||1,2);viewW=innerWidth;viewH=innerHeight;canvas.width=Math.round(viewW*dpr);canvas.height=Math.round(viewH*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);if(bloomCanvas){bloomCanvas.width=canvas.width;bloomCanvas.height=canvas.height;gl.viewport(0,0,bloomCanvas.width,bloomCanvas.height)}}
 addEventListener('resize',resize);resize();
 const rand=(a,b)=>a+Math.random()*(b-a),dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 function toast(s){const e=document.getElementById('toast');e.textContent=s;e.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>e.classList.remove('show'),1800)}
@@ -346,7 +377,7 @@ function update(dt){
  document.getElementById('workerCount').textContent=workers.length;document.getElementById('flowerCount').textContent=totalFlowers;
 }
 function launchFlower(type='daisy'){if(launcherAnim.state==='idle'&&launcherAnim.queue.length===0)startLauncherSequence(type);else launcherAnim.queue.push(type||'daisy')}
-function frame(now){const dt=Math.min(.04,(now-last)/1000);last=now;update(dt);drawWorld();requestAnimationFrame(frame)}requestAnimationFrame(frame);
+function frame(now){const dt=Math.min(.04,(now-last)/1000);last=now;update(dt);drawWorld();renderBloom();requestAnimationFrame(frame)}requestAnimationFrame(frame);
 let pointer={x:0,y:0},drag=null,pointers=new Map(),pinchStart=null;
 canvas.addEventListener('pointerdown',e=>{pointer={x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===2){const a=[...pointers.values()];pinchStart={distance:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y),zoom:camera.zoom};drag=null;selectionStart=null;return}if(planningHousing){const c=cellIndexAtWorld(screenToWorld(e.clientX,e.clientY));selectionStart=c;selectionCurrent=c;drag={id:e.pointerId,x:e.clientX,y:e.clientY,moved:false,planning:true};return}drag={id:e.pointerId,x:e.clientX,y:e.clientY,cx:camera.x,cy:camera.y,moved:false}});
 canvas.addEventListener('pointermove',e=>{pointer={x:e.clientX,y:e.clientY};if(pointers.has(e.pointerId))pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===2&&pinchStart){const a=[...pointers.values()],d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);camera.zoom=Math.max(.38,Math.min(1.35,pinchStart.zoom*d/pinchStart.distance));clampCamera();return}if(drag&&drag.id===e.pointerId){const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.abs(dx)+Math.abs(dy)>5)drag.moved=true;if(drag.planning){selectionCurrent=cellIndexAtWorld(screenToWorld(e.clientX,e.clientY));return}camera.x=drag.cx-dx/camera.zoom;camera.y=drag.cy-dy/camera.zoom;clampCamera()}});
