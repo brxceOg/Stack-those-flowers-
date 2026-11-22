@@ -1,18 +1,18 @@
 # Art Direction — Stack Those Flowers
 
 ## Overall look
-A cheerful, handcrafted pixel-art garden. The world should feel like a little living garden colony viewed from above, with clear silhouettes, warm natural colors, chunky pixel edges, and readable animation at iPhone scale.
+A cheerful, handcrafted garden combining the existing pixel-art garden world with the new cartoon 2D worker character. The world should feel like a little living garden colony viewed from above, with clear silhouettes, warm natural colors, chunky pixel edges, and readable animation at iPhone scale.
 
 ## Existing source art
 Use the repository's two supplied sheets as the source of truth:
-- `IMG_1373.jpeg`: current worker character sprite sheet, used for the worker walk, run, and flower-picking animations.\n- `IMG_1369.jpeg`: original world, flower, and tile art source.
+- `IMG_1375.jpeg`: current cartoon 2D worker character sprite sheet on a bright magenta background; used for walk, run, pick, and carrying animations.\n- `IMG_1369.jpeg`: original world, flower, and tile art source.
 - `IMG_1370.jpeg`: staged flower-pile sizes and launcher-related visual reference.
 
 Preserve both original files unchanged. All production sprite assets must be derived transparent PNGs (individual sprites and/or sprite sheets), never destructive edits to the source art.
 
 ## Mandatory extraction and transparency standard
 - **Every isolated sprite must have a genuinely transparent alpha background. A white background is not acceptable.**
-- Remove the white sheet/paper background completely from the extracted sprite area. Do not leave white pixels, pale halos, white rectangles, or a matte around the sprite.
+- Remove the edge-connected magenta sheet background completely from the extracted worker sprite area, including magenta antialiasing halos. Do not leave white pixels, pale halos, white rectangles, or a matte around the sprite.
 - Preserve white pixels that are part of the artwork: flower petals, eye whites, shine, highlights, shirt details, and other intentional white markings. Background removal must be based on connected background regions / careful masks, not a global “turn every white pixel transparent” operation.
 - Inspect each extracted sprite against both a dark checkerboard and a contrasting solid background. Any leftover white fringe, stray background pixels, holes in the artwork, or clipped details must be corrected before the asset is accepted.
 - Keep antialiasing/pixel edges faithful. For pixel art, favor clean hard-edged alpha where appropriate; do not blur, feather, or erode the sprite silhouette.
