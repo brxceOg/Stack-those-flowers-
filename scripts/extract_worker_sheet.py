@@ -74,6 +74,40 @@ def remove_connected_paper(crop):
     a[a[:, :, 3] == 0, :3] = 0
     return Image.fromarray(a, "RGBA")
 
+def keep_largest_art_component(crop):
+    """Discard detached specks/fragments after the sprite has been isolated."""
+    rgba = np.asarray(crop.convert("RGBA"), dtype=np.uint8).copy()
+    mask = rgba[:, :, 3] > 0
+    h, w = mask.shape
+    seen = np.zeros((h, w), dtype=bool)
+    largest = []
+    for sy in range(h):
+        for sx in range(w):
+            if not mask[sy, sx] or seen[sy, sx]:
+                continue
+            stack = [(sy, sx)]
+            seen[sy, sx] = True
+            component = []
+            while stack:
+                y, x = stack.pop()
+                component.append((y, x))
+                for dy in (-1, 0, 1):
+                    for dx in (-1, 0, 1):
+                        ny, nx = y + dy, x + dx
+                        if 0 <= ny < h and 0 <= nx < w and mask[ny, nx] and not seen[ny, nx]:
+                            seen[ny, nx] = True
+                            stack.append((ny, nx))
+            if len(component) > len(largest):
+                largest = component
+    if not largest:
+        raise RuntimeError("Isolated worker cell contains no connected artwork")
+    keep = np.zeros((h, w), dtype=bool)
+    ys, xs = zip(*largest)
+    keep[np.asarray(ys), np.asarray(xs)] = True
+    rgba[~keep] = 0
+    return Image.fromarray(rgba, "RGBA")
+
+
 def extract_row_cells(source, row_boxes, y0, y1):
     """Use the gaps between adjacent pose bounds as hard per-frame cut lines."""
     row_boxes = sorted(row_boxes, key=lambda b: b[0])
@@ -112,6 +146,9 @@ def extract_row_cells(source, row_boxes, y0, y1):
             raise RuntimeError(f"Invalid frame boundary at row frame {i}")
         # Crop the entire isolated cell, not just the connected-component bbox.
         crop = remove_connected_paper(source.crop((x0, y0, x1, y1)))
+        # A pose in this source sheet is one connected silhouette. Remove any
+        # disconnected flecks that crossed a seam from a neighboring pose.
+        crop = keep_largest_art_component(crop)
         bbox = crop.getchannel("A").getbbox()
         if bbox is None:
             raise RuntimeError(f"Frame {i} has no visible pixels")
