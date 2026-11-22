@@ -51,4 +51,4 @@ A standalone, mobile-first idle gathering game for iPhone Safari, hosted as a Gi
 
 - Campfires render a soft amber glow in a 58-world-unit circular radius, with gentle flame-synchronized flicker. This is visual only; the worker boost radius remains 320 world units.
 
-- Workers whose assigned house is within 320 world units of a campfire receive a subtle golden glow and small glint behind their sprite, visually indicating the active movement and picking-speed boost. The indicator uses the same `isWorkerBoosted` check as gameplay and does not affect worker movement, animation, or collision.
+- Workers whose assigned house is within 320 world units of a campfire receive an animated golden tint and bright diagonal shine sweep composited directly over the worker's opaque sprite pixels. The shine follows the worker and is clipped by sprite transparency; it uses the same `isWorkerBoosted` check as gameplay and does not affect movement, animation, or collision.
