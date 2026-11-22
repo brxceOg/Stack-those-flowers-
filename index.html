@@ -50,9 +50,9 @@ let totalFlowers=10,totalDelivered=0,workers=[],houses=[],flowers=[],particles=[
 const SAVE_KEY='stackThoseFlowersSaveV1';
 const atlas=new Image();atlas.src='assets/flower-sprites.png';
 const pileAtlas=new Image();pileAtlas.src='assets/flower-pile-atlas.png';
-const workerWalk=new Image();workerWalk.src='assets/worker-walk.png?v=turnip';
-const workerRun=new Image();workerRun.src='assets/worker-run.png?v=run-cycle-2';
-const workerPick=new Image();workerPick.src='assets/worker-pick.png?v=turnip';
+const workerWalk=new Image();workerWalk.src='assets/worker-walk.png?v=1373';
+const workerRun=new Image();workerRun.src='assets/worker-run.png?v=1373';
+const workerPick=new Image();workerPick.src='assets/worker-pick.png?v=1373';
 let atlasReady=false;atlas.onload=()=>{atlasReady=true}; 
 function resize(){dpr=Math.min(devicePixelRatio||1,2);viewW=innerWidth;viewH=innerHeight;canvas.width=Math.round(viewW*dpr);canvas.height=Math.round(viewH*dpr);ctx.setTransform(dpr,0,0,dpr,0,0)}
 addEventListener('resize',resize);resize();
@@ -99,7 +99,7 @@ function drawWorker(w){
  // The picking sheet now contains only two crouch/grab poses.
  // Give each pose a clear, even hold; never advance into a walk frame.
  const pickFrame=picking?(w.anim<.8?0:1):0;
- const frame=picking?pickFrame:(moving?(Math.floor(w.anim*(running?12:8))%count):0);
+ const frame=picking?pickFrame:(moving?(Math.floor(w.anim*(running?10:7))%count):0);
  const bob=moving?Math.sin(w.anim*(running?15:10))*1.2:0;
  ctx.translate(0,bob);
  ctx.imageSmoothingEnabled=false;
