@@ -108,8 +108,29 @@ const workerToss=new Image();workerToss.src='assets/worker-toss.png?v=matte-unmi
  const dyeTentSheet=new Image();dyeTentSheet.src='IMG_1384.jpeg';
  const dyeVatSheet=new Image();dyeVatSheet.src='IMG_1386.jpeg';
  let dyeMakerCanvas=null,dyeTentCanvas=null,dyeVatCanvas=null;
+ let dyeMakerRunFrames=[],dyeMakerIdleFrame=null,dyeMakerPickFrame=null;
  function keyMagentaSheet(img){const cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;const cx=cv.getContext('2d',{willReadFrequently:true});cx.drawImage(img,0,0);const im=cx.getImageData(0,0,cv.width,cv.height),d=im.data;for(let y=0;y<cv.height;y++)for(let x=0;x<cv.width;x++){const i=(y*cv.width+x)*4,r=d[i],g=d[i+1],b=d[i+2];if(r>175&&b>145&&g<90&&r-g>75&&b-g>65)d[i+3]=0;}cx.putImageData(im,0,0);return cv}
- dyeMakerSheet.onload=()=>{dyeMakerCanvas=keyMagentaSheet(dyeMakerSheet)};
+ // Extract a single source cell, then trim only transparent pixels. The
+ // crop never crosses a cell boundary, and alpha bounds—not guessed sprite
+ // widths—decide the final frame dimensions.
+ function extractDyeMakerFrame(sx,sy,sw,sh){
+  const cell=document.createElement('canvas');cell.width=sw;cell.height=sh;
+  const cc=cell.getContext('2d',{willReadFrequently:true});cc.drawImage(dyeMakerCanvas,sx,sy,sw,sh,0,0,sw,sh);
+  const pixels=cc.getImageData(0,0,sw,sh).data;let minX=sw,minY=sh,maxX=-1,maxY=-1;
+  for(let y=0;y<sh;y++)for(let x=0;x<sw;x++){if(pixels[(y*sw+x)*4+3]>12){if(x<minX)minX=x;if(x>maxX)maxX=x;if(y<minY)minY=y;if(y>maxY)maxY=y}}
+  if(maxX<minX||maxY<minY)return cell;
+  const pad=2,left=Math.max(0,minX-pad),top=Math.max(0,minY-pad),right=Math.min(sw,maxX+pad+1),bottom=Math.min(sh,maxY+pad+1);
+  const frame=document.createElement('canvas');frame.width=right-left;frame.height=bottom-top;
+  frame.getContext('2d').drawImage(cell,left,top,frame.width,frame.height,0,0,frame.width,frame.height);
+  return frame;
+ }
+ dyeMakerSheet.onload=()=>{
+  dyeMakerCanvas=keyMagentaSheet(dyeMakerSheet);
+  const cellW=346,cellH=184;
+  dyeMakerRunFrames=[0,1,2,3].map(col=>extractDyeMakerFrame(col*cellW,cellH,cellW,cellH));
+  dyeMakerIdleFrame=extractDyeMakerFrame(0,cellH*2,230,cellH);
+  dyeMakerPickFrame=extractDyeMakerFrame(346,cellH*2,346,cellH);
+ };
  dyeTentSheet.onload=()=>{dyeTentCanvas=keyMagentaSheet(dyeTentSheet)};
  dyeVatSheet.onload=()=>{dyeVatCanvas=keyMagentaSheet(dyeVatSheet)};
 const launcherCollection=new Image();launcherCollection.src='assets/flower-launcher-collection.png?v=matte-unmix-1122-0723';
@@ -473,8 +494,19 @@ function assignFlower(w){
  // Reserve synchronously at selection time so another worker cannot claim it.
  target.reservedBy=w.id;w.target=target;w.state='toFlower';return true;
 }
-const DYE_MAKER_RUN_FRAMES=[{x:48,y:0},{x:394,y:0},{x:48,y:184},{x:394,y:184}];
- function drawDyeMaker(w){if(!dyeMakerCanvas||w.state==='inside')return;const running=w.state==='toPile'||w.state==='toTent'||w.state==='exitingTent',frame=running?Math.floor(w.anim*10)%DYE_MAKER_RUN_FRAMES.length:0,runFrame=DYE_MAKER_RUN_FRAMES[frame];const sx=w.state==='pickingPile'?485:running?runFrame.x:48,sy=w.state==='pickingPile'?368:running?runFrame.y:368,sw=w.state==='pickingPile'?180:198,sh=184;ctx.save();ctx.translate(w.x,w.y);if((w.facing||1)<0)ctx.scale(-1,1);ctx.imageSmoothingEnabled=true;ctx.drawImage(dyeMakerCanvas,sx,sy,sw,sh,-31,-57,62,58);if(w.carry){ctx.fillStyle='#d94b8b';ctx.beginPath();ctx.arc(17,-25,4,0,Math.PI*2);ctx.fill()}ctx.restore()}
+ function drawDyeMaker(w){
+  if(w.state==='inside')return;
+  const running=w.state==='toPile'||w.state==='toTent'||w.state==='exitingTent';
+  const frame=running?dyeMakerRunFrames[Math.floor(w.anim*10)%dyeMakerRunFrames.length]:w.state==='pickingPile'?dyeMakerPickFrame:dyeMakerIdleFrame;
+  if(!frame||!frame.width||!frame.height)return;
+  // Fit the complete alpha-trimmed artwork inside the old 62×58 footprint,
+  // preserving its proportions and keeping every pose on the same foot line.
+  const scale=Math.min(62/frame.width,58/frame.height),dw=frame.width*scale,dh=frame.height*scale;
+  ctx.save();ctx.translate(w.x,w.y);if((w.facing||1)<0)ctx.scale(-1,1);
+  ctx.imageSmoothingEnabled=true;ctx.drawImage(frame,-dw/2,-dh,dw,dh);
+  if(w.carry){ctx.fillStyle='#d94b8b';ctx.beginPath();ctx.arc(17,-Math.max(20,dh*.52),4,0,Math.PI*2);ctx.fill()}
+  ctx.restore();
+ }
  function drawUpgradePop(pop){
   const progress=Math.min(1,pop.time/pop.duration),fade=1-progress;
   const x=pop.x+18+progress*16,y=pop.y-49-progress*34;
