@@ -54,6 +54,7 @@ const workerWalk=new Image();workerWalk.src='assets/worker-walk.png?v=cartoon137
 const workerRun=new Image();workerRun.src='assets/worker-run.png?v=cartoon1375-final';
 const workerPick=new Image();workerPick.src='assets/worker-pick.png?v=cartoon1375-final';
 const workerCarry=new Image();workerCarry.src='assets/worker-carry.png?v=cartoon1375-final';
+const workerCarryIdle=new Image();workerCarryIdle.src='assets/worker-carry-idle.png?v=idle-carry-frame-1122';
 const workerIdle=new Image();workerIdle.src='assets/worker-idle.png?v=cartoon1375-final';
 const workerToss=new Image();workerToss.src='assets/worker-toss.png?v=toss-tight-crop-1122';
 const launcherCollection=new Image();launcherCollection.src='assets/flower-launcher-collection.png?v=launcher1378';
@@ -128,7 +129,7 @@ function drawWorker(w){
  const picking=w.state==='picking';
  const moving=w.state==='toFlower'||w.state==='toLauncher';
  const running=w.state==='toLauncher'||(w.state==='toFlower'&&w.target&&dist(w,w.target)>300);
- const sheet=w.state==='tossing'?(workerToss.complete&&workerToss.naturalWidth?workerToss:workerCarry):(picking?workerPick:((w.state==='toLauncher'||w.state==='preToss')&&w.carry?workerCarry:(running?workerRun:(moving?workerWalk:workerIdle))));
+ const sheet=w.state==='tossing'?(workerToss.complete&&workerToss.naturalWidth?workerToss:workerCarry):(picking?workerPick:(w.state==='preToss'&&w.carry?workerCarryIdle:(w.state==='toLauncher'&&w.carry?workerCarry:(running?workerRun:(moving?workerWalk:workerIdle)))));
  // Use only individually isolated frames from the new source sheet.
  if(!sheet.complete||!sheet.naturalWidth){ctx.restore();return}
  const FRAME_W=192,FRAME_H=192;
