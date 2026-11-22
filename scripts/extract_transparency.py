@@ -63,6 +63,51 @@ remove_connected_paper("IMG_1369.jpeg", OUT / "flower-atlas.png")
 remove_connected_paper("IMG_1370.jpeg", OUT / "flower-pile-atlas.png")
 
 def extract_worker_cycles():
+    # Extract the actual farmer artwork from the two top-row animation groups.
+    # Each group contains six visible poses in the supplied source sheet.
+    # Crop boundaries are explicit, so no frame can sample its neighbor.
+    atlas = Image.open(OUT / "flower-atlas.png").convert("RGBA")
+    width, height = atlas.size
+    if (width, height) != (1408, 768):
+        raise RuntimeError(f"Unexpected source atlas size: {width}x{height}")
+
+    walk_edges = [0, 114, 229, 343, 457, 572, 704]
+    run_edges  = [704, 802, 917, 1032, 1146, 1261, 1408]
+    y0, y1 = 26, 166
+    frame_w, frame_h = 128, 160
+    baseline = 151
+
+    for name, edges in (("walk", walk_edges), ("run", run_edges)):
+        frames = []
+        for i, (left, right) in enumerate(zip(edges, edges[1:])):
+            cell = atlas.crop((left, y0, right, y1))
+            bbox = cell.getchannel("A").getbbox()
+            if bbox is None:
+                raise RuntimeError(f"{name} frame {i} is empty")
+            sprite = cell.crop(bbox)
+            if sprite.width > frame_w - 8 or sprite.height > frame_h - 8:
+                raise RuntimeError(f"{name} frame {i} crop too large: {sprite.size}")
+            frame = Image.new("RGBA", (frame_w, frame_h), (0, 0, 0, 0))
+            x = (frame_w - sprite.width) // 2
+            y = baseline - sprite.height
+            frame.alpha_composite(sprite, (x, y))
+            frames.append(frame)
+
+        sheet = Image.new("RGBA", (frame_w * len(frames), frame_h), (0, 0, 0, 0))
+        for i, frame in enumerate(frames):
+            sheet.alpha_composite(frame, (i * frame_w, 0))
+        path = OUT / f"worker-{name}.png"
+        sheet.save(path, optimize=True)
+
+        # Validate each frame independently: no alpha may escape its cell.
+        for i in range(len(frames)):
+            frame = sheet.crop((i * frame_w, 0, (i + 1) * frame_w, frame_h))
+            alpha = np.asarray(frame.getchannel("A"))
+            if not np.any(alpha > 0) or not np.any(alpha == 0):
+                raise RuntimeError(f"Bad alpha in {name} frame {i}")
+        print(f"{path.relative_to(ROOT)}: {len(frames)} real {name} poses, isolated at {frame_w}x{frame_h}")
+
+extract_worker_cycles():
     # The first row of IMG_1369 contains five walk poses followed by five
     # run poses. Split by fixed source cells first, then trim each cell to
     # its own alpha bounds so no adjacent pose can bleed into a frame.
