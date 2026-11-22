@@ -184,14 +184,13 @@ function extractGridPoseCanvases(img){
 // animation state. Per-frame "fit to box" scaling makes short/tall poses pulse
 // in size as the animation advances, even when their source art is consistent.
 function sharedPoseScale(frames){
- // A single unusually wide/tall pose must not dictate the scale for every
- // character frame. Use the 75th-percentile pose bounds as the common scale
- // reference so typical poses regain their intended on-screen size while
- // retaining exactly the same pixels-per-unit across the animation.
- const widths=frames.map(frame=>frame.width).sort((a,b)=>a-b);
- const heights=frames.map(frame=>frame.height).sort((a,b)=>a-b);
- const pick=values=>values[Math.min(values.length-1,Math.floor((values.length-1)*.75))];
- return Math.min(180/pick(widths),184/pick(heights));
+ // Every isolated pose must fit completely inside its 192px animation cell.
+ // Size from the largest actual frame, not a percentile: a single raised-arm,
+ // throw, or interaction pose must never be clipped during atlas packing.
+ const maxWidth=Math.max(...frames.map(frame=>frame.width));
+ const maxHeight=Math.max(...frames.map(frame=>frame.height));
+ // Leave transparent safety margins on every side of the shared baseline.
+ return Math.min(176/maxWidth,176/maxHeight);
 }
 function packPoseStrip(frames,scale){
  const cell=192,out=document.createElement('canvas');out.width=frames.length*cell;out.height=cell;
@@ -524,16 +523,11 @@ function drawWorker(w){
   if(!drawWorker.boostCanvas){drawWorker.boostCanvas=document.createElement('canvas');drawWorker.boostCanvas.width=128;drawWorker.boostCanvas.height=128;drawWorker.boostCtx=drawWorker.boostCanvas.getContext('2d')}
   spriteCanvas=drawWorker.boostCanvas;spriteCtx=drawWorker.boostCtx;spriteCtx.clearRect(0,0,128,128);spriteCtx.save();spriteCtx.translate(64,64);
  }
- if(w.state==='tossing'){
-  // Toss art is stored in a wider 256x192 canvas so its raised-arm pose
-  // can match the other animations' 58px character height without distortion.
-  const tossH=78*CHARACTER_DISPLAY_SCALE;
-  const tossW=tossH*(sheet.naturalWidth/sheet.naturalHeight);
-  spriteCtx.drawImage(sheet,-tossW/2,-tossH,tossW,tossH);
- }else{
-  const characterSize=76*CHARACTER_DISPLAY_SCALE;
-  spriteCtx.drawImage(poseSheet,frame*FRAME_W,0,FRAME_W,FRAME_H,-characterSize/2,-characterSize,characterSize,characterSize);
- }
+ // All worker poses, including the throw charge-up/toss pose, use the
+ // same complete 192×192 frame cell and the same proportional display box.
+ // This avoids a special-case draw size that could crop or distort one pose.
+ const characterSize=76*CHARACTER_DISPLAY_SCALE;
+ spriteCtx.drawImage(poseSheet,frame*FRAME_W,0,FRAME_W,FRAME_H,-characterSize/2,-characterSize,characterSize,characterSize);
  if(boosted){
   spriteCtx.restore();
   // A bright diagonal highlight sweeps across the worker on a repeating cycle.
