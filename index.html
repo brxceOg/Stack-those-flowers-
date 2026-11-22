@@ -34,8 +34,8 @@ canvas{display:block;width:100%;height:100%;touch-action:none;image-rendering:au
 <canvas id="world"></canvas>
 <div class="topbar"><div class="brand">🌼 STACK THOSE FLOWERS</div><div class="stats"><div class="stat">👷 <span id="workerCount">0</span></div><div class="stat">🌸 <span id="flowerCount">0</span></div></div></div>
 <button id="menuBtn" aria-label="Open build menu">☰</button>
-<aside id="buildPanel"><h2>Build your garden</h2><p class="hint">Place worker houses around your flower field. Each house sends a helper to gather flowers and deliver them to the launcher.</p><button class="buildCard" id="houseButton"><span class="buildIcon">🏡</span><span>Worker House<span class="small">Cost: 10 flowers · adds 1 worker</span></span></button><p class="hint">Tip: Drag the world to explore. Pinch or use the + / − buttons to zoom.</p><button class="buildCard" id="cancelButton"><span class="buildIcon">✕</span><span>Cancel placement</span></button></aside>
-<div id="placeTip">TAP AN OPEN PATCH OF GRASS TO BUILD</div>
+<aside id="buildPanel"><h2>Build your garden</h2><p class="hint">Place worker houses around your flower field. While placing, the garden grid appears and buildings snap to its shared 96-pixel cells. Future structures will use this same alignment.</p><button class="buildCard" id="houseButton"><span class="buildIcon">🏡</span><span>Worker House<span class="small">Cost: 10 flowers · adds 1 worker</span></span></button><p class="hint">Tip: Drag the world to explore. Pinch or use the + / − buttons to zoom.</p><button class="buildCard" id="cancelButton"><span class="buildIcon">✕</span><span>Cancel placement</span></button></aside>
+<div id="placeTip">TAP AN OPEN GRID SQUARE TO BUILD</div>
 <div id="help">DRAG TO EXPLORE · PINCH TO ZOOM</div>
 <div id="zoomControls"><button id="zoomIn">+</button><button id="zoomOut">−</button><button id="homeView">⌂</button></div>
 <div id="toast"></div>
@@ -45,6 +45,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none;image-rendering:au
 'use strict';
 const canvas=document.getElementById('world'),ctx=canvas.getContext('2d');
 const W=2600,H=1900,center={x:W/2,y:H/2};
+const BUILD_GRID=96; // Shared footprint/alignment unit for all placeable structures.
 let dpr=1,viewW=0,viewH=0,camera={x:center.x,y:center.y,zoom:.78},placing=false,menuOpen=false;
 let totalFlowers=10,totalDelivered=0,workers=[],houses=[],flowers=[],particles=[],launched=[],tossedFlowers=[],last=performance.now(),toastTimer=0,saveClock=0,nextWorkerId=1;
 const SAVE_KEY='stackThoseFlowersSaveV1';
@@ -71,6 +72,19 @@ const rand=(a,b)=>a+Math.random()*(b-a),dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 function toast(s){const e=document.getElementById('toast');e.textContent=s;e.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>e.classList.remove('show'),1800)}
 function worldToScreen(p){return{x:(p.x-camera.x)*camera.zoom+viewW/2,y:(p.y-camera.y)*camera.zoom+viewH/2}}
 function screenToWorld(x,y){return{x:(x-viewW/2)/camera.zoom+camera.x,y:(y-viewH/2)/camera.zoom+camera.y}}
+// Structures are centered in a shared 96-world-pixel cell. Keep this helper
+// generic so future building types automatically use the same placement grid.
+function snapStructurePoint(p){return{x:Math.round((p.x-BUILD_GRID/2)/BUILD_GRID)*BUILD_GRID+BUILD_GRID/2,y:Math.round((p.y-BUILD_GRID/2)/BUILD_GRID)*BUILD_GRID+BUILD_GRID/2}}
+function structureCellAtScreen(x,y){return snapStructurePoint(screenToWorld(x,y))}
+function drawPlacementGrid(){
+ const left=camera.x-viewW/(2*camera.zoom),right=camera.x+viewW/(2*camera.zoom);
+ const top=camera.y-viewH/(2*camera.zoom),bottom=camera.y+viewH/(2*camera.zoom);
+ const firstX=Math.max(0,Math.floor(left/BUILD_GRID)*BUILD_GRID),lastX=Math.min(W,Math.ceil(right/BUILD_GRID)*BUILD_GRID);
+ const firstY=Math.max(0,Math.floor(top/BUILD_GRID)*BUILD_GRID),lastY=Math.min(H,Math.ceil(bottom/BUILD_GRID)*BUILD_GRID);
+ ctx.save();ctx.lineWidth=1.35/camera.zoom;ctx.strokeStyle='rgba(255,245,190,.43)';ctx.fillStyle='rgba(245,239,173,.075)';
+ for(let x=firstX;x<lastX;x+=BUILD_GRID)for(let y=firstY;y<lastY;y+=BUILD_GRID){ctx.fillRect(x,y,BUILD_GRID,BUILD_GRID);ctx.strokeRect(x,y,BUILD_GRID,BUILD_GRID)}
+ ctx.restore();
+}
 function clampCamera(){const halfW=viewW/(2*camera.zoom),halfH=viewH/(2*camera.zoom);camera.x=Math.max(halfW-120,Math.min(W-halfW+120,camera.x));camera.y=Math.max(halfH-120,Math.min(H-halfH+120,camera.y))}
 function seedWorld(){
  flowers=[];const types=FLOWER_TYPES;
@@ -224,12 +238,12 @@ function drawWorker(w){
 }
 function drawWorld(){
  ctx.clearRect(0,0,viewW,viewH);ctx.save();ctx.translate(viewW/2,viewH/2);ctx.scale(camera.zoom,camera.zoom);ctx.translate(-camera.x,-camera.y);
- drawGround();for(const f of flowers)drawFlower(f);for(const h of houses)drawHouse(h);drawLauncher();drawPile();
+ drawGround();if(placing)drawPlacementGrid();for(const f of flowers)drawFlower(f);for(const h of houses)drawHouse(h);drawLauncher();drawPile();
  for(const p of particles){ctx.fillStyle=p.color;ctx.globalAlpha=Math.max(0,p.life);ctx.beginPath();ctx.arc(p.x,p.y,4,0,7);ctx.fill()}ctx.globalAlpha=1;
  for(const t of tossedFlowers)drawTossedFlower(t);
   for(const l of launched)drawMachineFlower(l);
   for(const w of workers)drawWorker(w);
- if(placing){const p=screenToWorld(pointer.x,pointer.y);ctx.strokeStyle='#fff4a2';ctx.lineWidth=4/camera.zoom;ctx.setLineDash([8/camera.zoom,6/camera.zoom]);ctx.beginPath();ctx.arc(p.x,p.y,42,0,7);ctx.stroke();ctx.setLineDash([])}
+ if(placing){const p=structureCellAtScreen(pointer.x,pointer.y);ctx.save();ctx.fillStyle='rgba(255,244,162,.20)';ctx.strokeStyle='#fff4a2';ctx.lineWidth=3/camera.zoom;ctx.fillRect(p.x-BUILD_GRID/2,p.y-BUILD_GRID/2,BUILD_GRID,BUILD_GRID);ctx.strokeRect(p.x-BUILD_GRID/2,p.y-BUILD_GRID/2,BUILD_GRID,BUILD_GRID);ctx.restore()}
  ctx.restore();
 }
 function drawMachineFlower(t){
@@ -314,7 +328,7 @@ function frame(now){const dt=Math.min(.04,(now-last)/1000);last=now;update(dt);d
 let pointer={x:0,y:0},drag=null,pointers=new Map(),pinchStart=null;
 canvas.addEventListener('pointerdown',e=>{pointer={x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===2){const a=[...pointers.values()];pinchStart={distance:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y),zoom:camera.zoom};drag=null;return}drag={id:e.pointerId,x:e.clientX,y:e.clientY,cx:camera.x,cy:camera.y,moved:false}});
 canvas.addEventListener('pointermove',e=>{pointer={x:e.clientX,y:e.clientY};if(pointers.has(e.pointerId))pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===2&&pinchStart){const a=[...pointers.values()],d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);camera.zoom=Math.max(.38,Math.min(1.35,pinchStart.zoom*d/pinchStart.distance));clampCamera();return}if(drag&&drag.id===e.pointerId){const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.abs(dx)+Math.abs(dy)>5)drag.moved=true;camera.x=drag.cx-dx/camera.zoom;camera.y=drag.cy-dy/camera.zoom;clampCamera()}});
-canvas.addEventListener('pointerup',e=>{const p=screenToWorld(e.clientX,e.clientY);if(placing&&drag&&!drag.moved&&pointers.size===1){if(Math.hypot(p.x-launcher.x,p.y-launcher.y)<150||houses.some(h=>dist(h,p)<90)){toast('Choose an open patch of grass');}else if(totalFlowers<10){toast('You need 10 flowers to build a house');}else{totalFlowers-=10;houses.push({x:p.x,y:p.y});workers.push({id:nextWorkerId++,x:p.x,y:p.y+35,state:'search',anim:0,carry:null,target:null,pickingFlower:null});saveGame();placing=false;document.getElementById('placeTip').classList.remove('show');toast('Worker house built! A helper is on the way 🌼')}}pointers.delete(e.pointerId);if(pointers.size<2)pinchStart=null;drag=null});
+canvas.addEventListener('pointerup',e=>{const raw=screenToWorld(e.clientX,e.clientY);const p=placing? snapStructurePoint(raw):raw;if(placing&&drag&&!drag.moved&&pointers.size===1){if(p.x<BUILD_GRID/2||p.y<BUILD_GRID/2||p.x>W-BUILD_GRID/2||p.y>H-BUILD_GRID/2||Math.hypot(p.x-launcher.x,p.y-launcher.y)<150||houses.some(h=>dist(h,p)<BUILD_GRID)){toast('Choose an open grid square');}else if(totalFlowers<10){toast('You need 10 flowers to build a house');}else{totalFlowers-=10;houses.push({x:p.x,y:p.y});workers.push({id:nextWorkerId++,x:p.x,y:p.y+35,state:'search',anim:0,carry:null,target:null,pickingFlower:null});saveGame();placing=false;document.getElementById('placeTip').classList.remove('show');toast('Worker house built! A helper is on the way 🌼')}}pointers.delete(e.pointerId);if(pointers.size<2)pinchStart=null;drag=null});
 canvas.addEventListener('pointercancel',e=>{pointers.delete(e.pointerId);drag=null;pinchStart=null});
 document.getElementById('menuBtn').onclick=()=>{menuOpen=!menuOpen;document.getElementById('buildPanel').classList.toggle('open',menuOpen)};
 document.getElementById('houseButton').onclick=()=>{placing=true;menuOpen=false;document.getElementById('buildPanel').classList.remove('open');document.getElementById('placeTip').classList.add('show');toast('Tap an open spot to place your house')};
