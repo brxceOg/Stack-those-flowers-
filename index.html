@@ -50,9 +50,9 @@ let totalFlowers=10,totalDelivered=0,workers=[],houses=[],flowers=[],particles=[
 const SAVE_KEY='stackThoseFlowersSaveV1';
 const atlas=new Image();atlas.src='assets/flower-sprites.png';
 const pileAtlas=new Image();pileAtlas.src='assets/flower-pile-atlas.png';
-const workerWalk=new Image();workerWalk.src='assets/worker-walk.png';
-const workerRun=new Image();workerRun.src='assets/worker-run.png';
-const workerPick=new Image();workerPick.src='assets/worker-pick.png';
+const workerWalk=new Image();workerWalk.src='assets/worker-walk.png?v=turnip';
+const workerRun=new Image();workerRun.src='assets/worker-run.png?v=turnip';
+const workerPick=new Image();workerPick.src='assets/worker-pick.png?v=turnip';
 let atlasReady=false;atlas.onload=()=>{atlasReady=true}; 
 function resize(){dpr=Math.min(devicePixelRatio||1,2);viewW=innerWidth;viewH=innerHeight;canvas.width=Math.round(viewW*dpr);canvas.height=Math.round(viewH*dpr);ctx.setTransform(dpr,0,0,dpr,0,0)}
 addEventListener('resize',resize);resize();
@@ -94,7 +94,7 @@ function drawWorker(w){
  const sheet=picking?workerPick:(running?workerRun:workerWalk);
  // Use only individually isolated frames from the new source sheet.
  if(!sheet.complete||!sheet.naturalWidth){ctx.restore();return}
- const FRAME_W=160,FRAME_H=208;
+ const FRAME_W=160,FRAME_H=224;
  const count=Math.max(1,Math.floor(sheet.naturalWidth/FRAME_W));
  // The picking sheet now contains only two crouch/grab poses.
  // Give each pose a clear, even hold; never advance into a walk frame.
@@ -103,13 +103,13 @@ function drawWorker(w){
  const bob=moving?Math.sin(w.anim*(running?15:10))*1.2:0;
  ctx.translate(0,bob);
  ctx.imageSmoothingEnabled=false;
- ctx.drawImage(sheet,frame*FRAME_W,0,FRAME_W,FRAME_H,-25,-62,50,62);
+ ctx.drawImage(sheet,frame*FRAME_W,0,FRAME_W,FRAME_H,-16,-70,32,70);
  if(w.carry){
   // Draw the exact flower variety the worker harvested, using the same atlas
   // frame and source crop as flowers growing in the world.
   if(atlasReady){
    const flowerX={daisy:0,tulip:65,sunflower:130,pink:195}[w.carry]??0;
-   ctx.drawImage(atlas,flowerX,0,65,90,12,-51,24,34);
+   ctx.drawImage(atlas,flowerX,0,65,90,8,-42,18,25);
   }else{
    // Keep the held flower recognizable even before the atlas finishes loading.
    ctx.strokeStyle='#3f8a43';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(23,-23);ctx.lineTo(23,-39);ctx.stroke();
