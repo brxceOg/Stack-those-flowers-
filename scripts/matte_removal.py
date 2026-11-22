@@ -36,14 +36,16 @@ def remove_magenta_matte(image):
     alpha[~connected] = 1.0
     alpha[connected & (alpha < 0.055)] = 0.0
     recover = connected & (alpha >= 0.055)
-    # Keep the extracted edge's original structure, but neutralize the
-    # magenta channel excess on the retained antialias rim. The outline is
-    # intentionally dark; subtracting the same spill from red and blue keeps
-    # its luminance/detail while removing the pink cast.
+    # Defringe both partially transparent matte pixels and the immediately
+    # adjacent retained outline. JPEG spill often bleeds one pixel inward,
+    # outside the flood-filled background mask.
+    rim = ndimage.binary_dilation(connected, structure=np.ones((3, 3), dtype=bool))
+    neutralize = recover | (rim & ~connected)
     out_rgb = rgb.copy()
     spill = np.maximum(0.0, np.minimum(rgb[:, :, 0], rgb[:, :, 2]) - rgb[:, :, 1])
-    out_rgb[recover, 0] = np.maximum(0.0, rgb[recover, 0] - spill[recover])
-    out_rgb[recover, 2] = np.maximum(0.0, rgb[recover, 2] - 0.92 * spill[recover])
+    spill[(rgb[:, :, 0] < 45) | (rgb[:, :, 2] < 45)] = 0.0
+    out_rgb[neutralize, 0] = np.maximum(0.0, rgb[neutralize, 0] - spill[neutralize])
+    out_rgb[neutralize, 2] = np.maximum(0.0, rgb[neutralize, 2] - spill[neutralize])
     out_rgb[connected & ~recover] = 0
     out = np.dstack((out_rgb, alpha * 255.0)).round().clip(0, 255).astype(np.uint8)
     out[out[:, :, 3] == 0, :3] = 0
