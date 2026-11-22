@@ -13,45 +13,46 @@ COLS = ROWS = 4
 FRAME_W = FRAME_H = 192
 
 def remove_magenta_matte(image):
-    """Remove only edge-connected magenta and un-matte antialiased edges."""
+    """Remove the edge-connected magenta field, including JPEG-colored fringe pixels."""
     rgba = np.asarray(image.convert("RGBA"), dtype=np.uint8).copy()
-    rgb = rgba[:, :, :3].astype(np.float32)
+    rgb = rgba[:, :, :3].astype(np.int16)
     h, w = rgb.shape[:2]
     r, g, b = rgb[:, :, 0], rgb[:, :, 1], rgb[:, :, 2]
-    candidate = (r > 78) & (b > 78) & (g < 158) & ((r-g) > 42) & ((b-g) > 42)
-    # Sample the real JPEG matte from this cell's corners (the encoded magenta
-    # is slightly different from pure RGB 255,0,255).
-    background = np.median(np.array([rgb[0,0], rgb[0,-1], rgb[-1,0], rgb[-1,-1]]), axis=0)
+
+    # The character is yellow with dark purple/brown outlines. A broad magenta
+    # chroma test catches the flat field and its JPEG antialiasing without
+    # touching the character palette. Connected-fill prevents unrelated colors
+    # elsewhere in a cell from being treated as background.
+    candidate = (
+        (r > 90) & (b > 85) & (g < 210)
+        & ((r - g) > 35) & ((b - g) > -70)
+    )
     seen = np.zeros((h, w), dtype=bool)
     queue = deque()
+
     def add(y, x):
         if candidate[y, x] and not seen[y, x]:
             seen[y, x] = True
             queue.append((y, x))
+
     for x in range(w):
-        add(0, x); add(h-1, x)
+        add(0, x)
+        add(h - 1, x)
     for y in range(h):
-        add(y, 0); add(y, w-1)
+        add(y, 0)
+        add(y, w - 1)
+
     while queue:
         y, x = queue.popleft()
-        for dy, dx in ((-1,0),(1,0),(0,-1),(0,1)):
-            ny, nx = y+dy, x+dx
+        for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+            ny, nx = y + dy, x + dx
             if 0 <= ny < h and 0 <= nx < w:
                 add(ny, nx)
-    if np.any(seen):
-        # Estimate coverage from the green/blue/red channels using the expected
-        # yellow body and dark-outline contrast. This correctly un-mattes both
-        # pale skin edges and dark outlines without producing a green fringe.
-        green_coverage = (rgb[:, :, 1] - background[1]) / 191.0
-        blue_coverage = (background[2] - rgb[:, :, 2]) / 213.0
-        red_coverage = (background[0] - rgb[:, :, 0]) / 200.0
-        alpha = np.clip(np.maximum.reduce([green_coverage, blue_coverage, red_coverage]), 0.0, 1.0)
-        alpha[alpha < 0.13] = 0.0
-        safe = np.maximum(alpha, 1.0/255.0)
-        unmatte = (rgb - (1.0-alpha[:, :, None])*background) / safe[:, :, None]
-        rgba[seen, :3] = np.clip(unmatte[seen], 0, 255).astype(np.uint8)
-        rgba[seen, 3] = np.clip(alpha[seen]*255.0, 0, 255).astype(np.uint8)
-    rgba[rgba[:, :, 3] == 0, :3] = 0
+
+    # Discard magenta-contaminated boundary pixels instead of un-matting them
+    # into false green pixels. The character's dark outline remains intact.
+    rgba[seen, 3] = 0
+    rgba[seen, :3] = 0
     return Image.fromarray(rgba, "RGBA")
 
 
