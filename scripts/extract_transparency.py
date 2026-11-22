@@ -40,40 +40,70 @@ def remove_connected_paper(src, dst):
         raise RuntimeError(f"Transparency validation failed for {dst}")
     print(f"{dst.relative_to(ROOT)}: {w}x{h}, transparent={int((alpha==0).sum())}, opaque={int((alpha==255).sum())}")
 
+def connected_components(mask):
+    h, w = mask.shape
+    seen = np.zeros((h, w), dtype=np.uint8)
+    components = []
+    for sy in range(h):
+        for sx in range(w):
+            if not mask[sy, sx] or seen[sy, sx]:
+                continue
+            stack = [(sy, sx)]
+            seen[sy, sx] = 1
+            xs, ys = [], []
+            while stack:
+                y, x = stack.pop()
+                xs.append(x); ys.append(y)
+                for dy in (-1, 0, 1):
+                    ny = y + dy
+                    if ny < 0 or ny >= h: continue
+                    for dx in (-1, 0, 1):
+                        nx = x + dx
+                        if (dx == 0 and dy == 0) or nx < 0 or nx >= w: continue
+                        if mask[ny, nx] and not seen[ny, nx]:
+                            seen[ny, nx] = 1
+                            stack.append((ny, nx))
+            if len(xs) >= 700:
+                components.append((min(xs), min(ys), max(xs)+1, max(ys)+1, len(xs)))
+    return components
+
 def extract_worker_cycles():
-    # Extract the actual source-sheet farmer walk and run poses as transparent animation frames.
-    # Explicit, non-overlapping cells keep each pose isolated from its neighbors.
+    # Segment each farmer pose from the transparent source by its connected silhouette.
+    # This avoids fixed-width cells that can cut a pose or include its neighbor.
     atlas = Image.open(OUT / "flower-atlas.png").convert("RGBA")
-    width, height = atlas.size
-    if (width, height) != (1408, 768):
-        raise RuntimeError(f"Unexpected source atlas size: {width}x{height}")
-    walk_edges = [0, 114, 229, 343, 457, 572, 704]
-    run_edges = [704, 802, 917, 1032, 1146, 1261, 1408]
-    y0, y1 = 26, 166
+    arr = np.asarray(atlas, dtype=np.uint8)
+    if atlas.size != (1408, 768):
+        raise RuntimeError(f"Unexpected source atlas size: {atlas.width}x{atlas.height}")
+    # Only the top animation band; exclude the heading above it and all lower-row assets.
+    top = arr[28:170, :, 3] > 0
+    boxes = connected_components(top)
+    boxes = [(x0, y0+28, x1, y1+28, area) for x0,y0,x1,y1,area in boxes
+             if (y1-y0) >= 70 and (x1-x0) >= 45 and (x1-x0) <= 125]
+    boxes.sort(key=lambda b: b[0])
+    print("Detected top-row farmer components:", boxes)
+    if len(boxes) != 10:
+        raise RuntimeError(f"Expected 10 individually isolated farmer poses in the top row, detected {len(boxes)}. Refusing to create overlapping frames.")
     frame_w, frame_h, baseline = 128, 160, 151
-    for name, edges in (("walk", walk_edges), ("run", run_edges)):
+    for name, group in (("walk", boxes[:5]), ("run", boxes[5:])):
         frames = []
-        for i, (left, right) in enumerate(zip(edges, edges[1:])):
-            cell = atlas.crop((left, y0, right, y1))
-            bbox = cell.getchannel("A").getbbox()
+        for i, (x0,y0,x1,y1,area) in enumerate(group):
+            pad = 3
+            crop = atlas.crop((max(0,x0-pad), max(0,y0-pad), min(atlas.width,x1+pad), min(atlas.height,y1+pad)))
+            bbox = crop.getchannel("A").getbbox()
             if bbox is None:
                 raise RuntimeError(f"{name} frame {i} is empty")
-            sprite = cell.crop(bbox)
-            if sprite.width > frame_w - 8 or sprite.height > frame_h - 8:
-                raise RuntimeError(f"{name} frame {i} crop too large: {sprite.size}")
-            frame = Image.new("RGBA", (frame_w, frame_h), (0, 0, 0, 0))
+            sprite = crop.crop(bbox)
+            if sprite.width > frame_w-8 or sprite.height > frame_h-8:
+                raise RuntimeError(f"{name} frame {i} exceeds frame canvas: {sprite.size}")
+            frame = Image.new("RGBA", (frame_w, frame_h), (0,0,0,0))
             frame.alpha_composite(sprite, ((frame_w-sprite.width)//2, baseline-sprite.height))
             frames.append(frame)
-        sheet = Image.new("RGBA", (frame_w*len(frames), frame_h), (0, 0, 0, 0))
+        sheet = Image.new("RGBA", (frame_w*len(frames), frame_h), (0,0,0,0))
         for i, frame in enumerate(frames):
-            sheet.alpha_composite(frame, (i*frame_w, 0))
+            sheet.alpha_composite(frame, (i*frame_w,0))
         path = OUT / f"worker-{name}.png"
         sheet.save(path, optimize=True)
-        for i in range(len(frames)):
-            alpha = np.asarray(sheet.crop((i*frame_w, 0, (i+1)*frame_w, frame_h)).getchannel("A"))
-            if not np.any(alpha > 0) or not np.any(alpha == 0):
-                raise RuntimeError(f"Invalid {name} frame {i}")
-        print(f"{path.relative_to(ROOT)}: {len(frames)} isolated real {name} poses")
+        print(f"{path.relative_to(ROOT)}: {len(frames)} individually segmented poses; source boxes={group}")
 
 remove_connected_paper("IMG_1369.jpeg", OUT / "flower-atlas.png")
 remove_connected_paper("IMG_1370.jpeg", OUT / "flower-pile-atlas.png")
