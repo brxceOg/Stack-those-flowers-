@@ -8,7 +8,7 @@ SOURCE = ROOT / "IMG_1378.jpeg"
 OUT = ROOT / "assets"
 FRAME_DIR = OUT / "flower-launcher-frames"
 COLS = ROWS = 3
-FRAME_W, FRAME_H = 224, 168
+FRAME_W, FRAME_H = 224, 150
 
 def remove_magenta_background(image):
     rgba = np.asarray(image.convert("RGBA"), dtype=np.uint8).copy()
@@ -38,8 +38,10 @@ def remove_magenta_background(image):
     return Image.fromarray(rgba, "RGBA")
 
 def extract_cell(sheet, row, col):
-    cw, ch = sheet.width // COLS, sheet.height // ROWS
-    cell = remove_magenta_background(sheet.crop((col*cw, row*ch, (col+1)*cw, (row+1)*ch)))
+    cw = sheet.width // COLS
+    y0 = round(row * sheet.height / ROWS)
+    y1 = round((row + 1) * sheet.height / ROWS)
+    cell = remove_magenta_background(sheet.crop((col*cw, y0, (col+1)*cw, y1)))
     bbox = cell.getchannel("A").getbbox()
     if not bbox:
         raise RuntimeError(f"Empty launcher frame at row {row}, column {col}")
@@ -71,8 +73,8 @@ def save_cycle(name, row):
 if not SOURCE.is_file():
     raise FileNotFoundError(SOURCE)
 sheet = Image.open(SOURCE).convert("RGBA")
-if sheet.size != (657, 492):
-    raise RuntimeError(f"Unexpected IMG_1378.jpeg dimensions {sheet.size}; expected 657x492 3x3")
+if sheet.size != (657, 439):
+    raise RuntimeError(f"Unexpected IMG_1378.jpeg dimensions {sheet.size}; expected 657x439 3x3")
 FRAME_DIR.mkdir(parents=True, exist_ok=True)
 # Row 1: flower collection; row 2: charging; row 3: firing.
 for name, row in (("collection",0),("charge",1),("fire",2)):
