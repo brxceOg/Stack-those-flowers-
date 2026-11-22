@@ -485,7 +485,7 @@ function drawDyeMaker(w){if(!dyeMakerCanvas)return;const frame=(w.state==='toPil
   ctx.restore();
  }
  function update(dt){
- campfireClock+=dt;updateLauncher(dt);for(const t of dyeTents){if(t.brewing){t.brewTimer-=dt;t.brewAnim=(t.brewAnim||0)+dt;if(t.brewTimer<=0){t.brewing=false;t.brewTimer=0;const type=(t.nextVatType??Math.floor(Math.random()*8));dyeVats.push({x:t.x+24,y:t.y+18,tx:t.x+84,ty:t.y+28,age:0,type});t.nextVatType=null;particles.push({x:t.x+68,y:t.y-8,vx:rand(20,65),vy:rand(-90,-35),life:.7,color:'#d94b8b'});saveGame()}}}
+ campfireClock+=dt;updateLauncher(dt);for(const t of dyeTents){if(t.brewing){t.brewTimer-=dt;t.brewAnim=(t.brewAnim||0)+dt;if(t.brewTimer<=0){t.brewing=false;t.brewTimer=0;const type=(t.nextVatType??Math.floor(Math.random()*8));dyeVats.push({x:t.x,y:t.y+43,tx:t.x+38,ty:t.y+62,age:0,type});t.nextVatType=null;particles.push({x:t.x+68,y:t.y-8,vx:rand(20,65),vy:rand(-90,-35),life:.7,color:'#d94b8b'});saveGame()}}}
   for(const w of dyeMakers){if(w.state==='idle'&&!w.tent.brewing&&availablePileFlowers()>dyeMakers.filter(m=>m.state==='toPile').length){w.state='toPile';w.anim=0;w.carry=false;w.target={x:launcher.x+225,y:launcher.y+52}}if(w.state==='toPile'){if(moveToward(w,w.target,145,dt)){if(availablePileFlowers()>0){totalDelivered--;w.carry=true;w.state='toTent';w.anim=0;w.target={x:w.tent.x,y:w.tent.y+42};w.tent.nextVatType=Math.floor(Math.random()*8)}else{w.state='idle';w.target=null}}}else if(w.state==='toTent'){if(moveToward(w,w.target,145,dt)){w.carry=false;w.state='idle';w.tent.brewing=true;w.tent.brewTimer=4.5;w.tent.brewAnim=0;saveGame()}}}
  
   for(const pop of upgradePops)pop.time+=dt;upgradePops=upgradePops.filter(pop=>pop.time<pop.duration);
