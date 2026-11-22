@@ -35,7 +35,31 @@ def remove_magenta_background(image):
             if 0 <= ny < h and 0 <= nx < w:
                 add(ny, nx)
     rgba[seen] = (0, 0, 0, 0)
+    return defringe_magenta_edges(Image.fromarray(rgba, "RGBA"))
+
+def defringe_magenta_edges(image, strength=0.92):
+    """Neutralize magenta JPEG spill on the retained silhouette edge without softening its alpha."""
+    rgba = np.asarray(image.convert("RGBA"), dtype=np.uint8).copy()
+    rgb = rgba[:, :, :3].astype(np.int16)
+    alpha = rgba[:, :, 3] > 0
+    h, w = alpha.shape
+    # Find the one-pixel retained rim beside transparent sheet background.
+    edge = np.zeros((h, w), dtype=bool)
+    edge[1:, :] |= ~alpha[:-1, :]
+    edge[:-1, :] |= ~alpha[1:, :]
+    edge[:, 1:] |= ~alpha[:, :-1]
+    edge[:, :-1] |= ~alpha[:, 1:]
+    edge &= alpha
+    # Magenta contamination raises red and blue together relative to green.
+    spill = np.maximum(0, np.minimum(rgb[:, :, 0], rgb[:, :, 2]) - rgb[:, :, 1] - 10)
+    for channel in (0, 2):
+        cleaned = rgb[:, :, channel].copy()
+        cleaned[edge] = np.maximum(0, cleaned[edge] - np.rint(spill[edge] * strength)).astype(np.int16)
+        rgba[:, :, channel] = cleaned.astype(np.uint8)
+    # Fully transparent pixels carry no matte color into later resampling.
+    rgba[rgba[:, :, 3] == 0, :3] = 0
     return Image.fromarray(rgba, "RGBA")
+
 
 def extract_cell(sheet, row, col):
     cw = sheet.width // COLS
