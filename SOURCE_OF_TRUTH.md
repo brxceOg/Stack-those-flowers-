@@ -82,3 +82,5 @@ A standalone, mobile-first idle gathering game for iPhone Safari, hosted as a Gi
 
 
 - Final character source sheets: base worker `IMG_1394.jpeg`; Dye Maker `IMG_1393.jpeg`. Independently isolate all 16 cells. The pale background must become fully transparent, horizontal spacer rules must be removed rather than retained as sprite pixels, and enclosed white/cream character details and dark outlines must remain intact.
+
+- During drinking, the worker visibly holds the actual matching dye-vat sprite from `IMG_1386.jpeg`. The world vat is consumed on arrival, but its type remains on the worker's drink reference so the same isolated bottle frame can be drawn in the raised hand for the entire animation; the prop is rendered in front of the worker and does not change the drink sequence or buff timing.
