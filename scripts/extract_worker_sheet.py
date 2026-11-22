@@ -79,16 +79,31 @@ def extract_row_cells(source, row_boxes, y0, y1):
     row_boxes = sorted(row_boxes, key=lambda b: b[0])
     if len(row_boxes) != FRAME_COUNT_PER_ROW:
         raise RuntimeError(f"Expected 10 worker poses in row, found {len(row_boxes)}")
-    # Cut at the midpoint of the actual empty gutter between adjacent sprites.
-    # Center-to-center cuts can slice into a wide pose and retain pixels from its neighbor.
+    # Prefer the true empty gutter between silhouette bounds. Where two poses'
+    # bounding boxes overlap, find the least-painted vertical seam between their
+    # centers instead of assigning detached components by nearest-center guessing.
+    row_rgba = np.asarray(source.crop((0, y0, source.width, y1)).convert("RGBA"))
+    row_rgb = row_rgba[:, :, :3].astype(np.int16)
+    row_paper = (row_rgb.min(axis=2) >= 218) & ((row_rgb.max(axis=2) - row_rgb.min(axis=2)) <= 48)
+    ink = (~row_paper).sum(axis=0)
+    centers = [(b[0] + b[2]) / 2 for b in row_boxes]
     cuts = [0]
-    for left_box, right_box in zip(row_boxes, row_boxes[1:]):
+    for left_box, right_box, left_center, right_center in zip(
+        row_boxes, row_boxes[1:], centers, centers[1:]
+    ):
         gap_start, gap_end = left_box[2], right_box[0]
-        if gap_end <= gap_start:
-            raise RuntimeError(
-                f"Adjacent worker poses overlap or touch: {left_box} / {right_box}"
-            )
-        cuts.append((gap_start + gap_end) // 2)
+        if gap_end > gap_start:
+            cut = (gap_start + gap_end) // 2
+        else:
+            lo = max(1, int(np.floor(left_center)) + 1)
+            hi = min(source.width - 1, int(np.ceil(right_center)))
+            if hi <= lo:
+                raise RuntimeError("Cannot find a safe seam between adjacent poses")
+            # Stay away from the outermost pixels of each pose; choose the
+            # column with the fewest painted pixels in the overlapping span.
+            candidates = np.arange(lo, hi)
+            cut = int(candidates[np.argmin(ink[candidates])])
+        cuts.append(cut)
     cuts.append(source.width)
     frames = []
     for i in range(FRAME_COUNT_PER_ROW):
