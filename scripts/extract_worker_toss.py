@@ -14,7 +14,7 @@ def remove_connected_magenta(image):
     rgb = rgba[:, :, :3].astype(np.int16)
     r, g, b = rgb[:,:,0], rgb[:,:,1], rgb[:,:,2]
     # Match the vivid pink field and JPEG-compressed edge pixels only.
-    candidate = (r > 105) & (b > 85) & (g < 190) & ((r-g) > 45) & ((b-g) > 35)
+    candidate = (r > 135) & (b > 105) & (g < 225) & ((np.minimum(r,b)-g) > 16)
     h, w = candidate.shape
     seen = np.zeros((h,w), dtype=bool)
     queue = deque()
