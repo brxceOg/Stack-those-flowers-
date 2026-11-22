@@ -20,7 +20,6 @@ cell_w, cell_h = sheet.width / COLS, sheet.height / ROWS
 if abs(cell_w - 352) > 1 or abs(cell_h - 384) > 1:
     raise RuntimeError(f"Unexpected IMG_1382.jpeg dimensions: {sheet.size}; expected approximately 1408x768")
 
-clean = remove_magenta_matte(sheet)
 FRAME_DIR.mkdir(parents=True, exist_ok=True)
 atlas = Image.new("RGBA", (FRAME_SIZE * COLS, FRAME_SIZE * ROWS), (0, 0, 0, 0))
 
@@ -28,7 +27,10 @@ for i in range(COLS * ROWS):
     col, row = i % COLS, i // COLS
     x0, y0 = round(col * cell_w) + 7, round(row * cell_h) + 7
     x1, y1 = round((col + 1) * cell_w) - 7, round((row + 1) * cell_h) - 7
-    cell = clean.crop((x0, y0, x1, y1))
+    cell = sheet.crop((x0, y0, x1, y1))
+    # The sheet has dark separators around each pose, so matte each isolated
+    # cell independently; its magenta field then reaches all four edges.
+    cell = remove_magenta_matte(cell)
     alpha = np.asarray(cell.getchannel("A"))
     bbox = Image.fromarray(alpha).getbbox()
     if bbox is None:
