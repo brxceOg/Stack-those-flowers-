@@ -109,6 +109,96 @@ def extract_row_cells(source, row_boxes, y0, y1):
         frames.append(frame)
     return frames
 
+def extract_pick_frames(source, row_boxes, y0, y1):
+    """
+    Build each picking pose from its own connected artwork components.
+    Detached pixels are assigned to the nearest worker pose, not copied just
+    because they happen to fall inside a rectangular crop from a neighbor.
+    """
+    row_boxes = sorted(row_boxes, key=lambda b: b[0])
+    if len(row_boxes) != FRAME_COUNT_PER_ROW:
+        raise RuntimeError(f"Expected 10 picking poses, found {len(row_boxes)}")
+
+    # Remove only exterior paper first; intentional white shirt/highlight pixels survive.
+    cleaned = remove_connected_paper(source.crop((0, y0, source.width, y1)))
+    rgba = np.asarray(cleaned, dtype=np.uint8)
+    mask = rgba[:, :, 3] > 0
+    h, w = mask.shape
+
+    # Label every remaining connected artwork component, including small detached
+    # pieces. Each piece is assigned to the closest full-size worker pose.
+    labels = np.zeros((h, w), dtype=np.int32)
+    components = []
+    next_label = 0
+    for sy in range(h):
+        for sx in range(w):
+            if not mask[sy, sx] or labels[sy, sx]:
+                continue
+            next_label += 1
+            stack = [(sy, sx)]
+            labels[sy, sx] = next_label
+            xs, ys = [], []
+            while stack:
+                cy, cx = stack.pop()
+                xs.append(cx)
+                ys.append(cy)
+                for dy in (-1, 0, 1):
+                    ny = cy + dy
+                    if ny < 0 or ny >= h:
+                        continue
+                    for dx in (-1, 0, 1):
+                        nx = cx + dx
+                        if (dx == 0 and dy == 0) or nx < 0 or nx >= w:
+                            continue
+                        if mask[ny, nx] and not labels[ny, nx]:
+                            labels[ny, nx] = next_label
+                            stack.append((ny, nx))
+            if len(xs) >= 2:
+                components.append((next_label, np.asarray(xs), np.asarray(ys)))
+
+    centers = [((b[0] + b[2]) / 2, (b[1] + b[3]) / 2 - y0) for b in row_boxes]
+    owner = {}
+    for label, xs, ys in components:
+        cx, cy = float(xs.mean()), float(ys.mean())
+        nearest = min(range(len(centers)),
+                      key=lambda i: (cx - centers[i][0]) ** 2 + (cy - centers[i][1]) ** 2)
+        owner[label] = nearest
+
+    frames = []
+    for i, box in enumerate(row_boxes):
+        keep = np.zeros((h, w), dtype=bool)
+        for label, xs, ys in components:
+            if owner[label] == i:
+                keep[ys, xs] = True
+        if not np.any(keep):
+            raise RuntimeError(f"Picking frame {i} lost all artwork")
+
+        ys, xs = np.where(keep)
+        # Tight crop around only this pose's assigned pixels; add transparent padding.
+        x0 = max(0, int(xs.min()) - 4)
+        x1 = min(w, int(xs.max()) + 5)
+        cy0 = max(0, int(ys.min()) - 4)
+        cy1 = min(h, int(ys.max()) + 5)
+        sprite = rgba[cy0:cy1, x0:x1].copy()
+        local_keep = keep[cy0:cy1, x0:x1]
+        sprite[~local_keep, 3] = 0
+        sprite[sprite[:, :, 3] == 0, :3] = 0
+        sprite_img = Image.fromarray(sprite, "RGBA")
+
+        if sprite_img.width > FRAME_W - 8 or sprite_img.height > FRAME_H - 8:
+            raise RuntimeError(f"Picking frame {i} artwork {sprite_img.size} exceeds safe canvas")
+        frame = Image.new("RGBA", (FRAME_W, FRAME_H), (0, 0, 0, 0))
+        frame.alpha_composite(sprite_img, ((FRAME_W - sprite_img.width) // 2,
+                                           FRAME_H - 8 - sprite_img.height))
+        frames.append(frame)
+
+    # Strict per-cell isolation audit: no opaque pixels may exist outside each frame.
+    for i, frame in enumerate(frames):
+        alpha = np.asarray(frame.getchannel("A"))
+        if not np.any(alpha):
+            raise RuntimeError(f"Picking frame {i} is empty")
+    return frames
+
 def write_sheet(frames, name):
     sheet = Image.new("RGBA", (FRAME_W * len(frames), FRAME_H), (0, 0, 0, 0))
     for i, frame in enumerate(frames):
@@ -144,7 +234,7 @@ for row_index in range(ROW_COUNT):
 # and the complete crouch/reach/stand flower-picking action.
 walk = extract_row_cells(im, *rows[0])
 run = extract_row_cells(im, *rows[1])
-pick = extract_row_cells(im, *rows[2])
+pick = extract_pick_frames(im, *rows[2])
 write_sheet(walk[3:], "walk")
 write_sheet(run[2:], "run")
 write_sheet(pick, "pick")
