@@ -68,7 +68,7 @@ def connected_components(mask):
     return components
 
 def extract_worker_cycles():
-    # Segment each farmer pose from the transparent source by its connected silhouette.
+    # Segment each farmer pose from the transparent source by its connected silhouette.\n    # Five clean frames per source cycle are present in the supplied top row.
     # This avoids fixed-width cells that can cut a pose or include its neighbor.
     atlas = Image.open(OUT / "flower-atlas.png").convert("RGBA")
     arr = np.asarray(atlas, dtype=np.uint8)
