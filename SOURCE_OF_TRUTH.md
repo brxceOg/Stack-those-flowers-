@@ -68,3 +68,10 @@ A standalone, mobile-first idle gathering game for iPhone Safari, hosted as a Gi
 - Successfully purchasing a Worker House upgrade triggers a small cartoon-green up-arrow beside every worker's head. Each arrow drifts gently upward and to the right, then fades away as a brief purchase-success celebration; it is visual feedback only.
 
 - After a Worker House upgrade purchase, the open upgrade menu refreshes its next price in place without reopening or recalculating its position. The menu stays anchored exactly where the player opened it.
+
+
+## Dye maker production
+- A Dye Maker Tent costs 35 flowers and must be placed inside a planned housing section, following the existing building placement rules.
+- Each tent has one dedicated dye maker. The maker waits until a flower is visibly available in the flower pile, runs to collect it, carries it back to the tent, and starts a 4.5-second brewing cycle.
+- When brewing finishes, the tent spits a physical dye-vat item out from its entrance. Dye vats remain in the world and are saved with the existing V3 save data; the dye tent positions are also saved. Existing V2/V3 saves without these fields migrate to empty dye-tent and dye-vat arrays.
+- The dye-vat sprite sheet is keyed at runtime: magenta is transparent, and only the narrow black bottom strip is removed. The bottle outlines remain opaque.
