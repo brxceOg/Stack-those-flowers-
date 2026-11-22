@@ -12,10 +12,10 @@ Preserve both original files unchanged. All production sprite assets must be der
 
 ## Mandatory extraction and transparency standard
 - **Every isolated sprite must have a genuinely transparent alpha background. A white background is not acceptable.**
-- Remove the edge-connected magenta sheet background completely from the extracted worker sprite area, including magenta antialiasing halos. Do not leave white pixels, pale halos, white rectangles, or a matte around the sprite.
+- Remove the edge-connected magenta sheet background completely from the extracted worker sprite area, including magenta-contaminated antialiasing pixels. Do not leave white pixels, pale halos, white rectangles, or a matte around the sprite.
 - Preserve white pixels that are part of the artwork: flower petals, eye whites, shine, highlights, shirt details, and other intentional white markings. Background removal must be based on connected background regions / careful masks, not a global “turn every white pixel transparent” operation.
 - Inspect each extracted sprite against both a dark checkerboard and a contrasting solid background. Any leftover white fringe, stray background pixels, holes in the artwork, or clipped details must be corrected before the asset is accepted.
-- Keep antialiasing/pixel edges faithful. For pixel art, favor clean hard-edged alpha where appropriate; do not blur, feather, or erode the sprite silhouette.
+- Keep the cartoon outline faithful. Remove magenta contamination without introducing color spill; do not blur, feather, or erode the sprite silhouette.
 - Isolate frames individually before arranging them into a sheet. Never use guessed crop boxes that cut off artwork or include neighboring frames, labels, or another sprite.
 - Give each frame a consistent transparent canvas size and baseline. Preserve the complete silhouette and original aspect ratio; do not stretch frames to fit.
 - Keep a small transparent safety margin around each sprite so the full outermost pixels remain intact, but no visible background.
