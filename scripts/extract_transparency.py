@@ -90,6 +90,36 @@ def clean_isolated_paper(crop):
     rgba[rgba[:, :, 3] == 0, :3] = 0
     return Image.fromarray(rgba, "RGBA")
 
+def remove_tiny_alpha_components(crop, minimum_area=16):
+    rgba = np.asarray(crop.convert("RGBA"), dtype=np.uint8).copy()
+    mask = rgba[:, :, 3] > 0
+    h, w = mask.shape
+    seen = np.zeros((h, w), dtype=np.uint8)
+    for sy in range(h):
+        for sx in range(w):
+            if not mask[sy, sx] or seen[sy, sx]:
+                continue
+            stack = [(sy, sx)]
+            seen[sy, sx] = 1
+            component = []
+            while stack:
+                y, x = stack.pop()
+                component.append((y, x))
+                for dy in (-1, 0, 1):
+                    ny = y + dy
+                    if ny < 0 or ny >= h: continue
+                    for dx in (-1, 0, 1):
+                        nx = x + dx
+                        if (dx == 0 and dy == 0) or nx < 0 or nx >= w: continue
+                        if mask[ny, nx] and not seen[ny, nx]:
+                            seen[ny, nx] = 1
+                            stack.append((ny, nx))
+            if len(component) < minimum_area:
+                for y, x in component:
+                    rgba[y, x, 3] = 0
+                    rgba[y, x, :3] = 0
+    return Image.fromarray(rgba, "RGBA")
+
 def extract_worker_cycles():
     # Segment each farmer pose from the transparent source by its connected silhouette.
     # Five clean frames per source cycle are present in the supplied top row.
@@ -113,7 +143,7 @@ def extract_worker_cycles():
         for i, (x0,y0,x1,y1,area) in enumerate(group):
             pad = 3
             crop = atlas.crop((max(0,x0-pad), max(0,y0-pad), min(atlas.width,x1+pad), min(atlas.height,y1+pad)))
-            crop = clean_isolated_paper(crop)
+            crop = clean_isolated_paper(crop)\n            crop = remove_tiny_alpha_components(crop)
             bbox = crop.getchannel("A").getbbox()
             if bbox is None:
                 raise RuntimeError(f"{name} frame {i} is empty")
