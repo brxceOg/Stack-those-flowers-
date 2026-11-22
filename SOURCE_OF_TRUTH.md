@@ -48,3 +48,5 @@ A standalone, mobile-first idle gathering game for iPhone Safari, hosted as a Gi
 - No combat, enemies, or unrelated colony systems.
 - Do not replace the flower launcher with a generic factory.
 - Do not turn workers into animals or unrelated characters.
+
+- Campfires render a soft amber glow in a 58-world-unit circular radius, with gentle flame-synchronized flicker. This is visual only; the worker boost radius remains 320 world units.
