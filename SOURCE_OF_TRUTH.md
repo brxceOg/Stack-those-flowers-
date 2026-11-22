@@ -26,15 +26,15 @@ A standalone, mobile-first idle gathering game for iPhone Safari, hosted as a Gi
 - Keep touch input usable in iOS Safari and respect safe-area insets.
 - Keep simulation coordinates independent from screen pixels; resize and zoom must not distort world objects.
 - Keep worker state transitions explicit: search → toFlower → toLauncher → deposit → search.
-- Keep the two original JPEG source sheets intact. Any future extracted assets must be derived files, never destructive edits to the source art.
-- **All extracted production sprites must be PNGs with real transparency (alpha channel); a white sheet background or white matte/halo must never remain visible.**
-- Remove only connected sheet-background white pixels; preserve intentional white artwork such as petals, highlights, eyes, and shirt details. Never globally erase all white pixels.
+- Keep all original JPEG source sheets intact. Any future extracted assets must be derived files, never destructive edits to the source art.
+- **All extracted production sprites must be PNGs with real transparency (alpha channel); neither white nor magenta sheet backgrounds or color mattes/halos may remain visible.**
+- Remove only the edge-connected sheet background using a color-aware matte-removal method. The current cartoon worker source uses vivid magenta; preserve all worker colors and dark outlines while un-matting antialiased magenta edges.
 - Extract and inspect each frame individually before building a sprite sheet. Preserve the full silhouette, all edge pixels, original aspect ratio, and consistent frame canvas/baseline.
 - Validate each PNG by compositing it over dark and contrasting backgrounds and checking that the background is transparent while intentional white artwork remains intact.
 - Persist player progress in localStorage when save/load is added; version the save schema.
 
 ## Asset inventory
-- `IMG_1369.jpeg`: combined pixel-art sheet containing worker walk/run poses, flower/pickup poses, flower growth stages, flower varieties, and ground/world tiles.
+- `IMG_1375.jpeg`: current cartoon 2D worker sheet with magenta background; 4×4 layout for walk, run, pick, and carrying poses.\n- `IMG_1369.jpeg`: combined pixel-art sheet containing worker walk/run poses, flower/pickup poses, flower growth stages, flower varieties, and ground/world tiles.
 - `IMG_1370.jpeg`: flower-pile progression reference sheet.
 - The sheets include labels and multiple assets; do not use either full sheet as a visible in-game sprite. Crop individual frames and remove the white sheet background when creating production sprites.
 
