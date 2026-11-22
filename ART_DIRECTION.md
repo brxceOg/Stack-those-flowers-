@@ -25,7 +25,7 @@ Preserve both original files unchanged. All production sprite assets must be der
 - Use the supplied cartoon worker from IMG_1375.jpeg. Preserve its original yellow character palette, rounded silhouette, and dark outlines; do not substitute the previous pixel-art farmer.
 - Use the walk cycle for ordinary travel and the run cycle for longer-distance movement or upgrades.
 - Use the two dedicated crouching/reaching poses when collecting a flower, with the separate idle pose when a worker is waiting.
-- Carry a clearly visible flower while returning to the launcher.\n- On arrival within launcher range, pause briefly, show the dedicated `IMG_1379.jpeg` toss pose, and animate the carried flower arcing into the launcher before depositing it. The toss artwork is scaled to the same visible character height as the other worker animations, with a wider transparent canvas so its raised-arm silhouette keeps its natural proportions.
+- Carry a clearly visible flower while returning to the launcher.\n- On arrival within launcher range, pause briefly, show the dedicated `IMG_1379.jpeg` toss pose, and animate the carried flower arcing into the launcher before depositing it. The toss artwork is exported tightly cropped with transparent background and drawn by visible-art height (60 world pixels), so transparent canvas padding cannot make it appear smaller than the other worker animations.
 - Keep the worker's feet aligned to a stable ground baseline across every frame.
 - Never stretch individual frames to fit; preserve original aspect ratio.
 - In-world worker rendering uses a smaller 58×58 square draw size for the 192×192 transparent frame canvas; scale width and height uniformly and keep the feet on the same ground baseline.
