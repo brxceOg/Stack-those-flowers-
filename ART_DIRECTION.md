@@ -63,3 +63,6 @@ Preserve both original files unchanged. All production sprite assets must be der
 - Campfires cast a subtle, warm amber circular glow with a small local radius (58 world units). Its brightness flickers gently with the fire animation; it is a visual light effect only and does not change the 320-unit worker boost radius.
 
 - Workers receiving a campfire boost get a clearly visible, animated golden-white shine that sweeps diagonally across the worker's actual character pixels. The shine is clipped to the sprite's transparency, follows its animation and movement, and appears only while the assigned-house boost is active.
+
+
+- Each completed planned housing area is rendered as a distinct worked-earth plot with a warm brown soil surface, subtle soil texture, and a narrow grassy edge. The patch follows the exact planned grid rectangle; the blue overlay is reserved for an area currently being drawn.
