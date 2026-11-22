@@ -23,6 +23,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none;image-rendering:au
 #toast.show{opacity:1;transform:translate(-50%,0)}
 #placeTip{position:absolute;z-index:4;left:50%;top:calc(env(safe-area-inset-top,0px) + 66px);transform:translateX(-50%);display:none;background:#fff1c9;color:#304b30;border:2px solid #9b7d42;border-radius:12px;padding:8px 12px;font-weight:900;font-size:12px;white-space:nowrap}
 #placeTip.show{display:block}
+#placeTip.planning{background:#d9eaff;border-color:#4e8fd4;color:#174b80}
 #zoomControls{position:absolute;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);z-index:4;display:flex;flex-direction:column;gap:7px}
 #zoomControls button{width:42px;height:42px;border:2px solid #d8d99b;border-radius:12px;background:#385f3c;color:#fff;font-size:22px;font-weight:900;box-shadow:0 3px 0 #203b2a}
 #help{position:absolute;right:12px;top:calc(env(safe-area-inset-top,0px) + 64px);z-index:4;background:#294b35cc;border:1px solid #a5c779;border-radius:10px;padding:7px 9px;font-size:10px;font-weight:700;pointer-events:none}
@@ -34,7 +35,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none;image-rendering:au
 <canvas id="world"></canvas>
 <div class="topbar"><div class="brand">🌼 STACK THOSE FLOWERS</div><div class="stats"><div class="stat">👷 <span id="workerCount">0</span></div><div class="stat">🌸 <span id="flowerCount">0</span></div></div></div>
 <button id="menuBtn" aria-label="Open build menu">☰</button>
-<aside id="buildPanel"><h2>Build your garden</h2><p class="hint">Place worker houses around your flower field. While placing, the garden grid appears and buildings snap to its shared 96-pixel cells. Future structures will use this same alignment.</p><button class="buildCard" id="houseButton"><span class="buildIcon">🏡</span><span>Worker House<span class="small">Cost: 10 flowers · adds 1 worker</span></span></button><p class="hint">Tip: Drag the world to explore. Pinch or use the + / − buttons to zoom.</p><button class="buildCard" id="cancelButton"><span class="buildIcon">✕</span><span>Cancel placement</span></button></aside>
+<aside id="buildPanel"><h2>Build your garden</h2><p class="hint">Plan dedicated areas first, then place buildings inside matching sections.</p><button class="buildCard" id="planHousingButton"><span class="buildIcon">🟦</span><span>Plan housing unit<span class="small">Drag a rectangle · minimum 4 × 4 tiles</span></span></button><button class="buildCard" id="houseButton"><span class="buildIcon">🏡</span><span>Worker House<span class="small">Cost: 10 flowers · adds 1 worker</span></span></button><p class="hint">Tip: Drag the world to explore. Pinch or use the + / − buttons to zoom.</p><button class="buildCard" id="cancelButton"><span class="buildIcon">✕</span><span>Cancel placement</span></button></aside>
 <div id="placeTip">TAP AN OPEN GRID SQUARE TO BUILD</div>
 <div id="help">DRAG TO EXPLORE · PINCH TO ZOOM</div>
 <div id="zoomControls"><button id="zoomIn">+</button><button id="zoomOut">−</button><button id="homeView">⌂</button></div>
@@ -46,9 +47,10 @@ canvas{display:block;width:100%;height:100%;touch-action:none;image-rendering:au
 const canvas=document.getElementById('world'),ctx=canvas.getContext('2d');
 const W=2600,H=1900,center={x:W/2,y:H/2};
 const BUILD_GRID=96; // Shared footprint/alignment unit for all placeable structures.
-let dpr=1,viewW=0,viewH=0,camera={x:center.x,y:center.y,zoom:.78},placing=false,menuOpen=false;
-let totalFlowers=10,totalDelivered=0,workers=[],houses=[],flowers=[],particles=[],launched=[],tossedFlowers=[],last=performance.now(),toastTimer=0,saveClock=0,nextWorkerId=1;
-const SAVE_KEY='stackThoseFlowersSaveV1';
+let dpr=1,viewW=0,viewH=0,camera={x:center.x,y:center.y,zoom:.78},placing=false,planningHousing=false,selectionStart=null,selectionCurrent=null,menuOpen=false;
+let totalFlowers=10,totalDelivered=0,workers=[],houses=[],sections=[],flowers=[],particles=[],launched=[],tossedFlowers=[],last=performance.now(),toastTimer=0,saveClock=0,nextWorkerId=1;
+const SAVE_KEY='stackThoseFlowersSaveV2';
+try{localStorage.removeItem('stackThoseFlowersSaveV1')}catch(e){}
 const atlas=new Image();atlas.src='assets/flower-sprites.png?v=flower-crops-1122-0739';
 const workerHouse=new Image();workerHouse.src='assets/worker-house.png?v=house-edges-clean-1122';
 const FLOWER_SOURCE_X={sunflower:0,daisy:224,'red-bouquet':448,bluebells:672,tulip:896,rose:1120};
@@ -76,6 +78,14 @@ function screenToWorld(x,y){return{x:(x-viewW/2)/camera.zoom+camera.x,y:(y-viewH
 // generic so future building types automatically use the same placement grid.
 function snapStructurePoint(p){return{x:Math.round((p.x-BUILD_GRID/2)/BUILD_GRID)*BUILD_GRID+BUILD_GRID/2,y:Math.round((p.y-BUILD_GRID/2)/BUILD_GRID)*BUILD_GRID+BUILD_GRID/2}}
 function structureCellAtScreen(x,y){return snapStructurePoint(screenToWorld(x,y))}
+function cellIndexAtWorld(p){return{x:Math.floor(p.x/BUILD_GRID),y:Math.floor(p.y/BUILD_GRID)}}
+function cellRect(a,b){const x=Math.min(a.x,b.x),y=Math.min(a.y,b.y);return{x,y,w:Math.abs(b.x-a.x)+1,h:Math.abs(b.y-a.y)+1}}
+function sectionContainsCell(z,x,y){return x>=z.x&&y>=z.y&&x<z.x+z.w&&y<z.y+z.h}
+function housingSectionAt(p){const c=cellIndexAtWorld(p);return sections.find(z=>z.category==='housing'&&sectionContainsCell(z,c.x,c.y))}
+function drawPlannedSections(){
+ for(const z of sections){const x=z.x*BUILD_GRID,y=z.y*BUILD_GRID,w=z.w*BUILD_GRID,h=z.h*BUILD_GRID;ctx.save();ctx.fillStyle='rgba(62,145,231,.20)';ctx.strokeStyle='rgba(65,151,242,.95)';ctx.lineWidth=3/camera.zoom;ctx.fillRect(x,y,w,h);ctx.strokeRect(x,y,w,h);ctx.fillStyle='rgba(18,72,132,.9)';ctx.font='bold 22px ui-rounded, sans-serif';ctx.textAlign='center';ctx.fillText('HOUSING',x+w/2,y+25);ctx.restore()}
+ if(planningHousing&&selectionStart&&selectionCurrent){const r=cellRect(selectionStart,selectionCurrent),x=r.x*BUILD_GRID,y=r.y*BUILD_GRID,w=r.w*BUILD_GRID,h=r.h*BUILD_GRID;ctx.save();ctx.fillStyle='rgba(62,145,231,.28)';ctx.strokeStyle='#8ec9ff';ctx.lineWidth=4/camera.zoom;ctx.fillRect(x,y,w,h);ctx.strokeRect(x,y,w,h);ctx.restore()}
+}
 function drawPlacementGrid(){
  const left=camera.x-viewW/(2*camera.zoom),right=camera.x+viewW/(2*camera.zoom);
  const top=camera.y-viewH/(2*camera.zoom),bottom=camera.y+viewH/(2*camera.zoom);
@@ -91,13 +101,13 @@ function seedWorld(){
  for(let i=0;i<100;i++){let x=rand(150,W-150),y=rand(130,H-130);if(Math.hypot(x-center.x,y-center.y)<260)continue;flowers.push({x,y,type:types[i%types.length],phase:rand(0,6.2),state:'growing',respawn:0})}
 }
 seedWorld();
-function loadGame(){try{const data=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!data||data.version!==1)return;totalFlowers=Math.max(0,Number(data.flowers)||0);totalDelivered=Math.max(0,Number(data.delivered)||0);
+function loadGame(){try{const data=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!data||data.version!==2)return;totalFlowers=Math.max(0,Number(data.flowers)||0);totalDelivered=Math.max(0,Number(data.delivered)||0);sections=Array.isArray(data.sections)?data.sections.filter(z=>z&&z.category==='housing'&&Number.isInteger(z.x)&&Number.isInteger(z.y)&&Number.isInteger(z.w)&&Number.isInteger(z.h)&&z.w>=4&&z.h>=4):[];
  // Migrate existing saves onto the shared structure grid. Snap legacy house
  // positions to cell centers, keep them inside the garden, and collapse any
  // legacy placements that land in the same cell. Persist the migrated layout.
  const usedCells=new Set();houses=(Array.isArray(data.houses)?data.houses:[]).filter(h=>Number.isFinite(h.x)&&Number.isFinite(h.y)).map(h=>{const p=snapStructurePoint(h);return{x:Math.max(BUILD_GRID/2,Math.min(W-BUILD_GRID/2,p.x)),y:Math.max(BUILD_GRID/2,Math.min(H-BUILD_GRID/2,p.y))}}).filter(h=>{const key=h.x+','+h.y;if(usedCells.has(key))return false;usedCells.add(key);return true;});
  workers=houses.map(h=>({id:nextWorkerId++,x:h.x,y:h.y+35,state:'search',anim:0,carry:null,target:null,pickingFlower:null}));saveGame();}catch(e){}}
-function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({version:1,flowers:totalFlowers,delivered:totalDelivered,houses}));}catch(e){}}
+function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({version:2,flowers:totalFlowers,delivered:totalDelivered,houses,sections}));}catch(e){}}
 loadGame();addEventListener('pagehide',saveGame);
 const launcher={x:center.x,y:center.y,scale:1};
 function drawGround(){
@@ -243,12 +253,12 @@ function drawWorker(w){
 }
 function drawWorld(){
  ctx.clearRect(0,0,viewW,viewH);ctx.save();ctx.translate(viewW/2,viewH/2);ctx.scale(camera.zoom,camera.zoom);ctx.translate(-camera.x,-camera.y);
- drawGround();if(placing)drawPlacementGrid();for(const f of flowers)drawFlower(f);for(const h of houses)drawHouse(h);drawLauncher();drawPile();
+ drawGround();if(placing||planningHousing)drawPlacementGrid();drawPlannedSections();for(const f of flowers)drawFlower(f);for(const h of houses)drawHouse(h);drawLauncher();drawPile();
  for(const p of particles){ctx.fillStyle=p.color;ctx.globalAlpha=Math.max(0,p.life);ctx.beginPath();ctx.arc(p.x,p.y,4,0,7);ctx.fill()}ctx.globalAlpha=1;
  for(const t of tossedFlowers)drawTossedFlower(t);
   for(const l of launched)drawMachineFlower(l);
   for(const w of workers)drawWorker(w);
- if(placing){const p=structureCellAtScreen(pointer.x,pointer.y);ctx.save();ctx.fillStyle='rgba(255,244,162,.20)';ctx.strokeStyle='#fff4a2';ctx.lineWidth=3/camera.zoom;ctx.fillRect(p.x-BUILD_GRID/2,p.y-BUILD_GRID/2,BUILD_GRID,BUILD_GRID);ctx.strokeRect(p.x-BUILD_GRID/2,p.y-BUILD_GRID/2,BUILD_GRID,BUILD_GRID);ctx.restore()}
+ if(placing){const p=structureCellAtScreen(pointer.x,pointer.y),allowed=!!housingSectionAt(p);ctx.save();ctx.fillStyle=allowed?'rgba(115,205,255,.30)':'rgba(255,120,100,.22)';ctx.strokeStyle=allowed?'#8ec9ff':'#ff9a82';ctx.lineWidth=3/camera.zoom;ctx.fillRect(p.x-BUILD_GRID/2,p.y-BUILD_GRID/2,BUILD_GRID,BUILD_GRID);ctx.strokeRect(p.x-BUILD_GRID/2,p.y-BUILD_GRID/2,BUILD_GRID,BUILD_GRID);ctx.restore()}
  ctx.restore();
 }
 function drawMachineFlower(t){
@@ -331,13 +341,15 @@ function update(dt){
 function launchFlower(type='daisy'){if(launcherAnim.state==='idle'&&launcherAnim.queue.length===0)startLauncherSequence(type);else launcherAnim.queue.push(type||'daisy')}
 function frame(now){const dt=Math.min(.04,(now-last)/1000);last=now;update(dt);drawWorld();requestAnimationFrame(frame)}requestAnimationFrame(frame);
 let pointer={x:0,y:0},drag=null,pointers=new Map(),pinchStart=null;
-canvas.addEventListener('pointerdown',e=>{pointer={x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===2){const a=[...pointers.values()];pinchStart={distance:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y),zoom:camera.zoom};drag=null;return}drag={id:e.pointerId,x:e.clientX,y:e.clientY,cx:camera.x,cy:camera.y,moved:false}});
-canvas.addEventListener('pointermove',e=>{pointer={x:e.clientX,y:e.clientY};if(pointers.has(e.pointerId))pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===2&&pinchStart){const a=[...pointers.values()],d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);camera.zoom=Math.max(.38,Math.min(1.35,pinchStart.zoom*d/pinchStart.distance));clampCamera();return}if(drag&&drag.id===e.pointerId){const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.abs(dx)+Math.abs(dy)>5)drag.moved=true;camera.x=drag.cx-dx/camera.zoom;camera.y=drag.cy-dy/camera.zoom;clampCamera()}});
-canvas.addEventListener('pointerup',e=>{const raw=screenToWorld(e.clientX,e.clientY);const p=placing? snapStructurePoint(raw):raw;if(placing&&drag&&!drag.moved&&pointers.size===1){if(p.x<BUILD_GRID/2||p.y<BUILD_GRID/2||p.x>W-BUILD_GRID/2||p.y>H-BUILD_GRID/2||Math.hypot(p.x-launcher.x,p.y-launcher.y)<150||houses.some(h=>dist(h,p)<BUILD_GRID)){toast('Choose an open grid square');}else if(totalFlowers<10){toast('You need 10 flowers to build a house');}else{totalFlowers-=10;houses.push({x:p.x,y:p.y});workers.push({id:nextWorkerId++,x:p.x,y:p.y+35,state:'search',anim:0,carry:null,target:null,pickingFlower:null});saveGame();placing=false;document.getElementById('placeTip').classList.remove('show');toast('Worker house built! A helper is on the way 🌼')}}pointers.delete(e.pointerId);if(pointers.size<2)pinchStart=null;drag=null});
-canvas.addEventListener('pointercancel',e=>{pointers.delete(e.pointerId);drag=null;pinchStart=null});
+canvas.addEventListener('pointerdown',e=>{pointer={x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===2){const a=[...pointers.values()];pinchStart={distance:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y),zoom:camera.zoom};drag=null;selectionStart=null;return}if(planningHousing){const c=cellIndexAtWorld(screenToWorld(e.clientX,e.clientY));selectionStart=c;selectionCurrent=c;drag={id:e.pointerId,x:e.clientX,y:e.clientY,moved:false,planning:true};return}drag={id:e.pointerId,x:e.clientX,y:e.clientY,cx:camera.x,cy:camera.y,moved:false}});
+canvas.addEventListener('pointermove',e=>{pointer={x:e.clientX,y:e.clientY};if(pointers.has(e.pointerId))pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===2&&pinchStart){const a=[...pointers.values()],d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);camera.zoom=Math.max(.38,Math.min(1.35,pinchStart.zoom*d/pinchStart.distance));clampCamera();return}if(drag&&drag.id===e.pointerId){const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.abs(dx)+Math.abs(dy)>5)drag.moved=true;if(drag.planning){selectionCurrent=cellIndexAtWorld(screenToWorld(e.clientX,e.clientY));return}camera.x=drag.cx-dx/camera.zoom;camera.y=drag.cy-dy/camera.zoom;clampCamera()}});
+canvas.addEventListener('pointerup',e=>{const raw=screenToWorld(e.clientX,e.clientY);if(planningHousing&&drag&&drag.planning&&selectionStart){selectionCurrent=cellIndexAtWorld(raw);const r=cellRect(selectionStart,selectionCurrent),inside=r.x>=0&&r.y>=0&&(r.x+r.w)*BUILD_GRID<=W&&(r.y+r.h)*BUILD_GRID<=H,overlaps=sections.some(z=>r.x<z.x+z.w&&r.x+r.w>z.x&&r.y<z.y+z.h&&r.y+r.h>z.y);if(r.w<4||r.h<4)toast('Housing sections must be at least 4 × 4 tiles');else if(!inside)toast('Keep the planned area inside the garden');else if(overlaps)toast('That area overlaps an existing planned section');else{sections.push({category:'housing',x:r.x,y:r.y,w:r.w,h:r.h});saveGame();planningHousing=false;document.getElementById('placeTip').classList.remove('show','planning');toast('Housing area planned! 🟦')}selectionStart=null;selectionCurrent=null}
+else if(placing&&drag&&!drag.moved&&pointers.size===1){const p=snapStructurePoint(raw);if(p.x<BUILD_GRID/2||p.y<BUILD_GRID/2||p.x>W-BUILD_GRID/2||p.y>H-BUILD_GRID/2||!housingSectionAt(p))toast('Worker houses can only be built in a blue housing section');else if(Math.hypot(p.x-launcher.x,p.y-launcher.y)<150||houses.some(h=>dist(h,p)<BUILD_GRID))toast('Choose an open grid square');else if(totalFlowers<10)toast('You need 10 flowers to build a house');else{totalFlowers-=10;houses.push({x:p.x,y:p.y});workers.push({id:nextWorkerId++,x:p.x,y:p.y+35,state:'search',anim:0,carry:null,target:null,pickingFlower:null});saveGame();placing=false;document.getElementById('placeTip').classList.remove('show');toast('Worker house built! A helper is on the way 🌼')}}pointers.delete(e.pointerId);if(pointers.size<2)pinchStart=null;drag=null});
+canvas.addEventListener('pointercancel',e=>{pointers.delete(e.pointerId);drag=null;pinchStart=null;selectionStart=null;selectionCurrent=null});
 document.getElementById('menuBtn').onclick=()=>{menuOpen=!menuOpen;document.getElementById('buildPanel').classList.toggle('open',menuOpen)};
-document.getElementById('houseButton').onclick=()=>{placing=true;menuOpen=false;document.getElementById('buildPanel').classList.remove('open');document.getElementById('placeTip').classList.add('show');toast('Tap an open spot to place your house')};
-document.getElementById('cancelButton').onclick=()=>{placing=false;document.getElementById('placeTip').classList.remove('show')};
+document.getElementById('planHousingButton').onclick=()=>{planningHousing=true;placing=false;selectionStart=null;selectionCurrent=null;menuOpen=false;document.getElementById('buildPanel').classList.remove('open');const tip=document.getElementById('placeTip');tip.textContent='DRAG A BLUE HOUSING AREA · MINIMUM 4 × 4 TILES';tip.classList.add('planning','show');toast('Drag across at least 4 × 4 grid tiles')};
+document.getElementById('houseButton').onclick=()=>{if(!sections.some(z=>z.category==='housing')){toast('Plan a blue housing section first');return}placing=true;planningHousing=false;menuOpen=false;document.getElementById('buildPanel').classList.remove('open');const tip=document.getElementById('placeTip');tip.textContent='TAP AN OPEN TILE INSIDE A BLUE HOUSING SECTION';tip.classList.remove('planning');tip.classList.add('show');toast('Choose an open tile inside a blue housing area')};
+document.getElementById('cancelButton').onclick=()=>{placing=false;planningHousing=false;selectionStart=null;selectionCurrent=null;document.getElementById('placeTip').classList.remove('show','planning')};
 function zoom(f){camera.zoom=Math.max(.38,Math.min(1.35,camera.zoom*f));clampCamera()}
 document.getElementById('zoomIn').onclick=()=>zoom(1.2);document.getElementById('zoomOut').onclick=()=>zoom(.83);document.getElementById('homeView').onclick=()=>{camera={x:center.x,y:center.y,zoom:.78}};
 })();
