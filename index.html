@@ -110,12 +110,12 @@ const dyeVatSheet=new Image();dyeVatSheet.src='IMG_1386.jpeg';
 let dyeMakerCanvas=null,dyeTentCanvas=null,dyeVatCanvas=null;
 let dyeMakerRunFrames=[],dyeMakerCarryFrames=[],dyeMakerIdleFrame=null,dyeMakerPickFrame=null,dyeMakerPickFrames=[],dyeMakerCarryIdleFrame=null;
 function setCanvasImage(image,canvas){image.onload=null;image.src=canvas.toDataURL('image/png')}
-function extractGridPoseCanvases(img,rows=4,trimPadding=3){
+function extractGridPoseCanvases(img,rows=4,trimPadding=3,rowEdges=null){
  const source=document.createElement('canvas');source.width=img.naturalWidth;source.height=img.naturalHeight;
  const sc=source.getContext('2d',{willReadFrequently:true});sc.drawImage(img,0,0);
  const sw=source.width,sh=source.height,cellW=sw/4,cellH=sh/rows,frames=[];
  for(let row=0;row<rows;row++)for(let col=0;col<4;col++){
-  const x0=Math.round(col*cellW),y0=Math.round(row*cellH),x1=Math.round((col+1)*cellW),y1=Math.round((row+1)*cellH);
+  const x0=Math.round(col*cellW),y0=Math.round(rowEdges?rowEdges[row]:row*cellH),x1=Math.round((col+1)*cellW),y1=Math.round(rowEdges?rowEdges[row+1]:(row+1)*cellH);
   const w=x1-x0,h=y1-y0,im=sc.getImageData(x0,y0,w,h),d=im.data,n=w*h;
   // Estimate the pale paper matte from the perimeter of this cell. Using
   // its actual edge color handles the pink/white JPEG background and its
@@ -235,7 +235,7 @@ function keyMagentaSheet(img){const cv=document.createElement('canvas');cv.width
 workerDrinkSheet.onload=()=>{
  // IMG_1395 is used only for its lower-row four-frame pick-up-and-drink sequence.
  // Vat approach movement continues to use the worker's existing walk/run sheets.
- const poses=extractGridPoseCanvases(workerDrinkSheet,2,10);
+ // The source has a visible horizontal rule above the lower row; the lower-row heads start above the 50% split. Start that row at the actual artwork boundary so no head pixels are discarded.\n  const poses=extractGridPoseCanvases(workerDrinkSheet,2,10,[0,86,workerDrinkSheet.naturalHeight]);
  const drinkFrames=poses.slice(4,8);
  
  setCanvasImage(workerDrinkSequence,packDrinkPoseStrip(drinkFrames));
@@ -725,7 +725,7 @@ function assignFlower(w){
   if((w.state==='idle'||w.state==='search'||w.state==='toFlower')&&dyeVats.length&&Math.random()<.02*dt){
    const claimed=workers.filter(other=>other!==w&&other.drinkVat).map(other=>other.drinkVat);
    const vat=dyeVats.filter(v=>!claimed.includes(v)).sort((a,b)=>dist(w,a)-dist(w,b))[0];
-   if(vat){if(w.state==='toFlower')releaseFlowerReservation(w);w.drinkVat=vat;w.state='toDyeVat';w.target={x:vat.x-22,y:vat.y+8};w.anim=0}
+   if(vat){if(w.state==='toFlower')releaseFlowerReservation(w);w.drinkVat=vat;w.state='toDyeVat';const vatX=Number.isFinite(vat.tx)?vat.tx:vat.x,vatY=Number.isFinite(vat.ty)?vat.ty:vat.y;w.target={x:vatX-28,y:vatY+10};w.anim=0}
   }
   if(w.state==='toDyeVat'){
    if(!w.drinkVat||!dyeVats.includes(w.drinkVat)){w.drinkVat=null;w.target=null;w.state='search';w.anim=0}
