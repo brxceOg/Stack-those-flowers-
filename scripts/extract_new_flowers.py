@@ -19,7 +19,7 @@ def remove_magenta_background(image):
     return remove_magenta_matte(image)
 
 def clean_cell(cell):
-    rgba = np.asarray(remove_magenta_background(cell), dtype=np.uint8).copy()
+    rgba = np.asarray(cell.convert("RGBA"), dtype=np.uint8).copy()
     mask = rgba[:, :, 3] > 0
     h, w = mask.shape
     seen = np.zeros((h, w), dtype=bool)
@@ -70,7 +70,7 @@ def clean_cell(cell):
 def main():
     if not SOURCE.is_file():
         raise FileNotFoundError(SOURCE)
-    sheet = Image.open(SOURCE).convert("RGB")
+    # Remove the sheet matte once on the full source image, while its true outer\n    # border is available for robust background-color estimation. Cropped cells\n    # are already transparent and must not re-estimate the matte from artwork.\n    sheet = remove_magenta_matte(Image.open(SOURCE).convert("RGB"))
     # Each illustration has its own explicit crop. The uploaded sheet is NOT
     # a uniform 2x3 grid: the middle and bottom rows sit at different heights,
     # so dividing it into equal-height bands cuts petals/stems and can include
