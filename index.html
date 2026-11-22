@@ -122,8 +122,30 @@ function cellRect(a,b){const x=Math.min(a.x,b.x),y=Math.min(a.y,b.y);return{x,y,
 function sectionContainsCell(z,x,y){return x>=z.x&&y>=z.y&&x<z.x+z.w&&y<z.y+z.h}
 function housingSectionAt(p){const c=cellIndexAtWorld(p);return sections.find(z=>z.category==='housing'&&sectionContainsCell(z,c.x,c.y))}
 function drawPlannedSections(){
- for(const z of sections){const x=z.x*BUILD_GRID,y=z.y*BUILD_GRID,w=z.w*BUILD_GRID,h=z.h*BUILD_GRID;ctx.save();ctx.fillStyle='rgba(62,145,231,.20)';ctx.strokeStyle='rgba(65,151,242,.95)';ctx.lineWidth=3/camera.zoom;ctx.fillRect(x,y,w,h);ctx.strokeRect(x,y,w,h);ctx.fillStyle='rgba(18,72,132,.9)';ctx.font='bold 22px ui-rounded, sans-serif';ctx.textAlign='center';ctx.fillText('HOUSING',x+w/2,y+25);ctx.restore()}
- if(planningHousing&&selectionStart&&selectionCurrent){const r=cellRect(selectionStart,selectionCurrent),x=r.x*BUILD_GRID,y=r.y*BUILD_GRID,w=r.w*BUILD_GRID,h=r.h*BUILD_GRID;ctx.save();ctx.fillStyle='rgba(62,145,231,.28)';ctx.strokeStyle='#8ec9ff';ctx.lineWidth=4/camera.zoom;ctx.fillRect(x,y,w,h);ctx.strokeRect(x,y,w,h);ctx.restore()}
+ for(const z of sections){
+  const x=z.x*BUILD_GRID,y=z.y*BUILD_GRID,w=z.w*BUILD_GRID,h=z.h*BUILD_GRID;
+  ctx.save();
+  // A planned housing zone becomes its own patch of worked soil, visibly
+  // dividing it from the surrounding grass without changing its grid footprint.
+  ctx.fillStyle='#98734a';ctx.fillRect(x,y,w,h);
+  ctx.fillStyle='#a98255';ctx.fillRect(x+4,y+4,Math.max(0,w-8),Math.max(0,h-8));
+  ctx.fillStyle='rgba(75,49,29,.17)';
+  for(let i=0;i<Math.floor(w/34)+1;i++)for(let j=0;j<Math.floor(h/31)+1;j++){
+   const px=x+14+((i*37+j*19)%Math.max(1,w-28)),py=y+13+((j*29+i*11)%Math.max(1,h-26));
+   ctx.beginPath();ctx.ellipse(px,py,2+(i+j)%3,1.5,((i*7+j*3)%9)*.12,0,Math.PI*2);ctx.fill();
+  }
+  // A narrow grassy lip and darker inner edge make each dirt plot read as a
+  // separate garden bed while keeping the original rectangular land division.
+  ctx.strokeStyle='#638b49';ctx.lineWidth=7;ctx.strokeRect(x+1.5,y+1.5,Math.max(0,w-3),Math.max(0,h-3));
+  ctx.strokeStyle='rgba(75,48,28,.48)';ctx.lineWidth=2;ctx.strokeRect(x+7,y+7,Math.max(0,w-14),Math.max(0,h-14));
+  ctx.fillStyle='rgba(65,48,31,.78)';ctx.font='bold 18px ui-rounded, sans-serif';ctx.textAlign='center';ctx.textBaseline='top';
+  ctx.fillText('HOUSING',x+w/2,y+13);
+  ctx.restore();
+ }
+ if(planningHousing&&selectionStart&&selectionCurrent){
+  const r=cellRect(selectionStart,selectionCurrent),x=r.x*BUILD_GRID,y=r.y*BUILD_GRID,w=r.w*BUILD_GRID,h=r.h*BUILD_GRID;
+  ctx.save();ctx.fillStyle='rgba(62,145,231,.24)';ctx.strokeStyle='#8ec9ff';ctx.lineWidth=4/camera.zoom;ctx.fillRect(x,y,w,h);ctx.strokeRect(x,y,w,h);ctx.restore();
+ }
 }
 function drawPlacementGrid(){
  const left=camera.x-viewW/(2*camera.zoom),right=camera.x+viewW/(2*camera.zoom);
