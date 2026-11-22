@@ -48,7 +48,10 @@ const W=2600,H=1900,center={x:W/2,y:H/2};
 let dpr=1,viewW=0,viewH=0,camera={x:center.x,y:center.y,zoom:.78},placing=false,menuOpen=false;
 let totalFlowers=10,totalDelivered=0,workers=[],houses=[],flowers=[],particles=[],launched=[],tossedFlowers=[],last=performance.now(),toastTimer=0,saveClock=0,nextWorkerId=1;
 const SAVE_KEY='stackThoseFlowersSaveV1';
-const atlas=new Image();atlas.src='assets/flower-sprites.png';
+const atlas=new Image();atlas.src='assets/flower-sprites.png?v=flowers-1380';
+const FLOWER_SOURCE_X={sunflower:0,daisy:128,'red-bouquet':256,bluebells:384,tulip:512,rose:640};
+const FLOWER_TYPES=Object.keys(FLOWER_SOURCE_X);
+const FLOWER_FRAME=128;
 const pileAtlas=new Image();pileAtlas.src='assets/flower-pile-atlas.png';
 const workerWalk=new Image();workerWalk.src='assets/worker-walk.png?v=cartoon1375-final';
 const workerRun=new Image();workerRun.src='assets/worker-run.png?v=cartoon1375-final';
@@ -69,7 +72,7 @@ function worldToScreen(p){return{x:(p.x-camera.x)*camera.zoom+viewW/2,y:(p.y-cam
 function screenToWorld(x,y){return{x:(x-viewW/2)/camera.zoom+camera.x,y:(y-viewH/2)/camera.zoom+camera.y}}
 function clampCamera(){const halfW=viewW/(2*camera.zoom),halfH=viewH/(2*camera.zoom);camera.x=Math.max(halfW-120,Math.min(W-halfW+120,camera.x));camera.y=Math.max(halfH-120,Math.min(H-halfH+120,camera.y))}
 function seedWorld(){
- flowers=[];const types=['daisy','tulip','sunflower','pink'];
+ flowers=[];const types=FLOWER_TYPES;
  for(let i=0;i<100;i++){let x=rand(150,W-150),y=rand(130,H-130);if(Math.hypot(x-center.x,y-center.y)<260)continue;flowers.push({x,y,type:types[i%types.length],phase:rand(0,6.2),state:'growing',respawn:0})}
 }
 seedWorld();
@@ -89,7 +92,7 @@ function drawGround(){
  for(let i=0;i<110;i++){let x=(i*263+80)%W,y=(i*431+120)%H;if(Math.hypot(x-center.x,y-center.y)<240)continue;ctx.fillStyle=i%2?'#729b55':'#b0ca7a';ctx.beginPath();ctx.ellipse(x,y,5,2,rand(-1,1),0,7);ctx.fill()}
 }
 function drawBush(x,y){ctx.fillStyle='#4e8849';ctx.beginPath();ctx.arc(x,y,23,0,7);ctx.fill();ctx.fillStyle='#72a95a';ctx.beginPath();ctx.arc(x-7,y-7,12,0,7);ctx.fill()}
-function drawFlower(f){if(f.state==='picked')return;const sway=Math.sin(performance.now()/520+f.phase)*2;ctx.save();ctx.translate(f.x,f.y);ctx.translate(sway,0);if(atlasReady){const sx={daisy:0,tulip:65,sunflower:130,pink:195}[f.type];ctx.drawImage(atlas,sx,0,65,90,-22,-43,44,58)}else{ctx.strokeStyle='#347b3c';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(0,18);ctx.lineTo(0,-10);ctx.stroke();ctx.fillStyle=f.type==='tulip'?'#d94c5d':f.type==='pink'?'#e87bb1':f.type==='sunflower'?'#f5b83e':'#fff';for(let i=0;i<7;i++){ctx.beginPath();ctx.arc(Math.cos(i*6.28/7)*9,-14+Math.sin(i*6.28/7)*9,6,0,7);ctx.fill()}ctx.fillStyle='#e6b944';ctx.beginPath();ctx.arc(0,-14,5,0,7);ctx.fill()}ctx.restore()}
+function drawFlower(f){if(f.state==='picked')return;const sway=Math.sin(performance.now()/520+f.phase)*2;ctx.save();ctx.translate(f.x,f.y);ctx.translate(sway,0);if(atlasReady){const sx=FLOWER_SOURCE_X[f.type]??0;ctx.drawImage(atlas,sx,0,FLOWER_FRAME,FLOWER_FRAME,-22,-43,44,58)}else{ctx.strokeStyle='#347b3c';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(0,18);ctx.lineTo(0,-10);ctx.stroke();ctx.fillStyle=f.type==='tulip'?'#d94c5d':f.type==='rose'?'#e85b57':f.type==='red-bouquet'?'#d94b4b':f.type==='bluebells'?'#667bd7':f.type==='sunflower'?'#f5b83e':'#fff';for(let i=0;i<7;i++){ctx.beginPath();ctx.arc(Math.cos(i*6.28/7)*9,-14+Math.sin(i*6.28/7)*9,6,0,7);ctx.fill()}ctx.fillStyle='#e6b944';ctx.beginPath();ctx.arc(0,-14,5,0,7);ctx.fill()}ctx.restore()}
 function drawHouse(h){ctx.save();ctx.translate(h.x,h.y);ctx.fillStyle='#385a39';ctx.beginPath();ctx.ellipse(0,16,35,13,0,0,7);ctx.fill();ctx.fillStyle='#d9b77a';ctx.fillRect(-25,-22,50,40);ctx.fillStyle='#a54e42';ctx.beginPath();ctx.moveTo(-33,-20);ctx.lineTo(0,-48);ctx.lineTo(33,-20);ctx.closePath();ctx.fill();ctx.fillStyle='#f1d89c';ctx.fillRect(-7,-7,14,25);ctx.fillStyle='#7eae9b';ctx.fillRect(-19,-14,10,11);ctx.fillRect(9,-14,10,11);ctx.restore()}
 const launcherAnim={state:'idle',time:0,queue:[],flowerType:'daisy'};
 const LAUNCHER_FRAME_W=224,LAUNCHER_FRAME_H=150;
@@ -141,8 +144,7 @@ function drawPile(){
    const take=Math.min(count,remaining);
    rows.push(take);remaining-=take;row++;
   }
-  const types=['daisy','tulip','sunflower','pink'];
-  const sourceX={daisy:0,tulip:65,sunflower:130,pink:195};
+  const types=FLOWER_TYPES;
   let index=0;
   for(let r=rows.length-1;r>=0;r--){
    const count=rows[r],rowWidth=(count-1)*17;
@@ -156,7 +158,7 @@ function drawPile(){
     const py=20-r*13+jitterY;
     const angle=Math.sin(seed*19.31)*.17;
     ctx.save();ctx.translate(px,py);ctx.rotate(angle);
-    ctx.drawImage(atlas,sourceX[type],0,65,90,-22*scale,-42*scale,44*scale,58*scale);
+    ctx.drawImage(atlas,FLOWER_SOURCE_X[type],0,FLOWER_FRAME,FLOWER_FRAME,-22*scale,-42*scale,44*scale,58*scale);
     ctx.restore();index++;
    }
   }
@@ -195,8 +197,8 @@ function drawWorker(w){
  // the carrying walk/run and stationary launcher wind-up poses.
  if(w.carry&&(w.state==='toLauncher'||w.state==='preToss')&&atlasReady){
   const flowerX=11,flowerY=-46,flowerW=17,flowerH=23;
-  const flowerSX=({daisy:0,tulip:65,sunflower:130,pink:195})[w.carry]??0;
-  ctx.drawImage(atlas,flowerSX,0,65,90,flowerX,flowerY,flowerW,flowerH);
+  const flowerSX=FLOWER_SOURCE_X[w.carry]??0;
+  ctx.drawImage(atlas,flowerSX,0,FLOWER_FRAME,FLOWER_FRAME,flowerX,flowerY,flowerW,flowerH);
  }
  ctx.restore()
 }
@@ -212,18 +214,18 @@ function drawWorld(){
 }
 function drawMachineFlower(t){
  const p=Math.min(1,t.time/t.duration),x=t.x+(t.tx-t.x)*p,y=t.y+(t.ty-t.y)*p-Math.sin(p*Math.PI)*54;
- const sx=({daisy:0,tulip:65,sunflower:130,pink:195})[t.type]??0;
+ const sx=FLOWER_SOURCE_X[t.type]??0;
  ctx.save();ctx.translate(x,y);ctx.rotate(p*6);
- if(atlasReady)ctx.drawImage(atlas,sx,0,65,90,-12,-16,24,33);
+ if(atlasReady)ctx.drawImage(atlas,sx,0,FLOWER_FRAME,FLOWER_FRAME,-12,-16,24,33);
  ctx.restore();
 }
 function drawTossedFlower(t){
  const p=Math.min(1,t.time/t.duration),x=t.x+(t.tx-t.x)*p,y=t.y+(t.ty-t.y)*p-Math.sin(p*Math.PI)*42;
  // Use the same isolated cutout as the flower the worker collected.
- // Sprite atlas order: daisy, tulip, sunflower, pink.
+ // Use the matching isolated flower variety from the replacement atlas.
  const sx=({daisy:0,tulip:65,sunflower:130,pink:195})[t.type]??0;
  ctx.save();ctx.translate(x,y);ctx.rotate(p*5);
- if(atlasReady)ctx.drawImage(atlas,sx,0,65,90,-16,-21,32,42);
+ if(atlasReady)ctx.drawImage(atlas,sx,0,FLOWER_FRAME,FLOWER_FRAME,-16,-21,32,42);
  ctx.restore();
 }
 function moveToward(obj,target,speed,dt){const dx=target.x-obj.x,dy=target.y-obj.y,d=Math.hypot(dx,dy);if(Math.abs(dx)>0.01)obj.facing=dx<0?-1:1;if(d<speed*dt+3){obj.x=target.x;obj.y=target.y;return true}obj.x+=dx/d*speed*dt;obj.y+=dy/d*speed*dt;obj.anim+=dt;return false}
