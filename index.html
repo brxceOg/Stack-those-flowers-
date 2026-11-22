@@ -106,7 +106,7 @@ const dyeMakerSheet=new Image();dyeMakerSheet.src='IMG_1391.jpeg?v=dye-maker-she
 const dyeTentSheet=new Image();dyeTentSheet.src='IMG_1384.jpeg';
 const dyeVatSheet=new Image();dyeVatSheet.src='IMG_1386.jpeg';
 let dyeMakerCanvas=null,dyeTentCanvas=null,dyeVatCanvas=null;
-let dyeMakerRunFrames=[],dyeMakerCarryFrames=[],dyeMakerIdleFrame=null,dyeMakerPickFrame=null,dyeMakerPickFrames=[];
+let dyeMakerRunFrames=[],dyeMakerCarryFrames=[],dyeMakerIdleFrame=null,dyeMakerPickFrame=null,dyeMakerPickFrames=[],dyeMakerCarryIdleFrame=null;
 function setCanvasImage(image,canvas){image.onload=null;image.src=canvas.toDataURL('image/png')}
 function extractGridPoseCanvases(img){
  const source=document.createElement('canvas');source.width=img.naturalWidth;source.height=img.naturalHeight;
@@ -136,7 +136,7 @@ function extractGridPoseCanvases(img){
      const q=yy*w+xx;if(candidate[q]&&!seen[q]){seen[q]=1;stack[bottom++]=q}
     }
    }
-   if(!touches&&area>=8)for(let k=0;k<bottom;k++)kept[stack[k]]=1;
+   const componentW=maxX-minX+1,componentH=maxY-minY+1;\n   const isSeparator=(componentW>w*.6&&componentH<10)||(componentH>h*.6&&componentW<10);\n   if(!isSeparator&&area>=8)for(let k=0;k<bottom;k++)kept[stack[k]]=1;
   }
   // Flood the non-foreground pixels from the cell perimeter. This makes
   // paper transparent while preserving enclosed light details inside the
