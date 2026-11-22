@@ -399,7 +399,26 @@ function drawDyeTent(t){
  if(selectedStructure&&selectedStructure.type==='tent'&&selectedStructure.ref===t){ctx.strokeStyle='#ffe28a';ctx.lineWidth=3;ctx.strokeRect(-68,-98,136,140)}
  ctx.restore()
 }
- function drawDyeVat(v){if(!dyeVatCanvas)return;const p=Math.min(1,(v.age||0)/.55),x=v.x+((v.tx??v.x)-v.x)*p,y=v.y+((v.ty??v.y)-v.y)*p-Math.sin(p*Math.PI)*26+Math.sin(campfireClock*2.4+v.x*.01)*1.5;ctx.save();ctx.translate(x,y);ctx.rotate((1-p)*.32);ctx.imageSmoothingEnabled=true;ctx.drawImage(dyeVatCanvas,v.type*103.5,0,103.5,84,-15,-25,30,25);ctx.restore()}
+let dyeVatFrameBounds=null;
+function getDyeVatFrameBounds(){
+ if(dyeVatFrameBounds||!dyeVatCanvas)return dyeVatFrameBounds;
+ const frameW=dyeVatCanvas.width/8,frameH=dyeVatCanvas.height,c=dyeVatCanvas.getContext('2d',{willReadFrequently:true}),out=[];
+ for(let frame=0;frame<8;frame++){
+  const im=c.getImageData(Math.round(frame*frameW),0,Math.ceil(frameW),frameH),d=im.data,w=im.width,h=im.height;let left=w,top=h,right=-1,bottom=-1;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(d[(y*w+x)*4+3]>8){left=Math.min(left,x);right=Math.max(right,x);top=Math.min(top,y);bottom=Math.max(bottom,y)}
+  out.push(right<left?{x:0,y:0,w:frameW,h:frameH}:{x:left,y:top,w:right-left+1,h:bottom-top+1});
+ }
+ dyeVatFrameBounds=out;return out;
+}
+function drawDyeVat(v){
+ if(!dyeVatCanvas)return;
+ const p=Math.min(1,(v.age||0)/.55),x=v.x+((v.tx??v.x)-v.x)*p,y=v.y+((v.ty??v.y)-v.y)*p-Math.sin(p*Math.PI)*26+Math.sin(campfireClock*2.4+v.x*.01)*1.5;
+ const frameW=dyeVatCanvas.width/8,frameH=dyeVatCanvas.height,bounds=getDyeVatFrameBounds(),b=bounds&&bounds[v.type]||{x:0,y:0,w:frameW,h:frameH};
+ const sx=Math.round(v.type*frameW)+b.x,sw=Math.min(Math.ceil(b.w),dyeVatCanvas.width-sx),sh=b.h,scale=Math.min(34/sw,34/sh),dw=sw*scale,dh=sh*scale;
+ ctx.save();ctx.translate(x,y);ctx.rotate((1-p)*.32);ctx.imageSmoothingEnabled=true;
+ // Fit the complete visible bottle silhouette inside a square without stretching or clipping its bottom outline.
+ ctx.drawImage(dyeVatCanvas,sx,b.y,sw,sh,-dw/2,-dh/2,dw,dh);ctx.restore();
+}
  function drawHouse(h){ctx.save();ctx.translate(h.x,h.y);ctx.fillStyle='rgba(42,75,39,.28)';ctx.beginPath();ctx.ellipse(0,-7,53,13,0,0,Math.PI*2);ctx.fill();if(workerHouse.complete&&workerHouse.naturalWidth>=896){ctx.imageSmoothingEnabled=true;ctx.drawImage(workerHouse,0,0,224,224,-48,-96,96,96)}if(selectedStructure&&selectedStructure.type==='house'&&selectedStructure.ref===h){ctx.strokeStyle='#ffe28a';ctx.lineWidth=3;ctx.strokeRect(-50,-98,100,100)}ctx.restore()}
 function isWorkerBoosted(w){
  // Campfires support towers, not moving worker sprites: each worker inherits
@@ -625,7 +644,11 @@ function assignFlower(w){
   ctx.save();ctx.translate(w.x,w.y);if((w.facing||1)<0)ctx.scale(-1,1);
   ctx.imageSmoothingEnabled=false;
   ctx.drawImage(dyeMakerAtlas,frame.x,frame.y,frame.w,frame.h,-dw/2,-dh,dw,dh);
-  if(w.carry){ctx.fillStyle='#d94b8b';ctx.beginPath();ctx.arc(17*CHARACTER_DISPLAY_SCALE,-Math.max(20*CHARACTER_DISPLAY_SCALE,dh*.52),4*CHARACTER_DISPLAY_SCALE,0,Math.PI*2);ctx.fill()}
+  if(w.carry&&w.carryType&&atlasReady){
+   const flowerSX=FLOWER_SOURCE_X[w.carryType]??FLOWER_SOURCE_X.daisy,flowerSize=21*CHARACTER_DISPLAY_SCALE;
+   // Show the same isolated flower artwork used by garden plants and the flower pile.
+   ctx.drawImage(atlas,flowerSX,0,FLOWER_FRAME,FLOWER_FRAME,dw*.12,-Math.max(24*CHARACTER_DISPLAY_SCALE,dh*.62),flowerSize,flowerSize);
+  }
   ctx.restore();
  }
  function drawUpgradePop(pop){
@@ -640,7 +663,7 @@ function assignFlower(w){
  }
  function update(dt){
  campfireClock+=dt;updateLauncher(dt);for(const t of dyeTents){if(t.brewing){t.brewTimer-=dt;t.brewAnim=(t.brewAnim||0)+dt;if(t.brewTimer<=0){t.brewing=false;t.brewTimer=0;const type=(t.nextVatType??Math.floor(Math.random()*8));dyeVats.push({x:t.x,y:t.y+43,tx:t.x+38,ty:t.y+62,age:0,type});t.nextVatType=null;particles.push({x:t.x+68,y:t.y-8,vx:rand(20,65),vy:rand(-90,-35),life:.7,color:'#d94b8b'});saveGame()}}}
-  for(const w of dyeMakers){if(w.state==='idle'&&!w.tent.brewing&&availablePileFlowers()>dyeMakers.filter(m=>m.state==='toPile'||m.state==='pickingPile').length){w.state='toPile';w.anim=0;w.carry=false;w.target={x:launcher.x+225,y:launcher.y+52}}if(w.state==='toPile'){if(moveToward(w,w.target,145,dt)){w.state='pickingPile';w.timer=.62;w.anim=0;w.target=null}}else if(w.state==='pickingPile'){w.timer-=dt;w.anim+=dt;if(w.timer<=0){if(availablePileFlowers()>0){totalDelivered--;w.carry=true;w.state='toTent';w.anim=0;w.target={x:w.tent.x,y:w.tent.y+42};w.tent.nextVatType=Math.floor(Math.random()*8)}else{w.state='idle';w.target=null}}}else if(w.state==='toTent'){if(moveToward(w,w.target,145,dt)){w.state='inside';w.carry=false;w.anim=0;w.tent.brewing=true;w.tent.brewTimer=4.5;w.tent.brewAnim=0;saveGame()}}else if(w.state==='inside'&&!w.tent.brewing){w.state='exitingTent';w.target={x:w.tent.x,y:w.tent.y+58};w.anim=0}else if(w.state==='exitingTent'){if(moveToward(w,w.target,92,dt)){w.state='idle';w.target=null;w.anim=0}}}
+  for(const w of dyeMakers){if(w.state==='idle'&&!w.tent.brewing&&availablePileFlowers()>dyeMakers.filter(m=>m.state==='toPile'||m.state==='pickingPile').length){w.state='toPile';w.anim=0;w.carry=false;w.target={x:launcher.x+225,y:launcher.y+52}}if(w.state==='toPile'){if(moveToward(w,w.target,145,dt)){w.state='pickingPile';w.timer=.62;w.anim=0;w.target=null}}else if(w.state==='pickingPile'){w.timer-=dt;w.anim+=dt;if(w.timer<=0){if(availablePileFlowers()>0){totalDelivered--;w.carry=true;w.carryType=FLOWER_TYPES[Math.floor(Math.random()*FLOWER_TYPES.length)];w.state='toTent';w.anim=0;w.target={x:w.tent.x,y:w.tent.y+42};w.tent.nextVatType=Math.floor(Math.random()*8)}else{w.state='idle';w.target=null}}}else if(w.state==='toTent'){if(moveToward(w,w.target,145,dt)){w.state='inside';w.carry=false;w.carryType=null;w.anim=0;w.tent.brewing=true;w.tent.brewTimer=4.5;w.tent.brewAnim=0;saveGame()}}else if(w.state==='inside'&&!w.tent.brewing){w.state='exitingTent';w.target={x:w.tent.x,y:w.tent.y+58};w.anim=0}else if(w.state==='exitingTent'){if(moveToward(w,w.target,92,dt)){w.state='idle';w.target=null;w.anim=0}}}
  
   for(const pop of upgradePops)pop.time+=dt;upgradePops=upgradePops.filter(pop=>pop.time<pop.duration);
  saveClock+=dt;if(saveClock>=2.5){saveClock=0;saveGame()}
