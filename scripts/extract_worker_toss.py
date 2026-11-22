@@ -46,7 +46,7 @@ def remove_connected_magenta(image):
     spill = np.maximum(0, np.minimum(r,b) - g).astype(np.float32)
     for channel in (0,2):
         values = rgba[:,:,channel].astype(np.float32)
-        values[edge] = np.maximum(0, values[edge] - spill[edge]*0.78)
+        values[edge] = np.maximum(0, values[edge] - spill[edge]*0.92)
         rgba[:,:,channel] = values.astype(np.uint8)
     return Image.fromarray(rgba, "RGBA")
 
