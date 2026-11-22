@@ -67,6 +67,29 @@ def connected_components(mask):
                 components.append((min(xs), min(ys), max(xs)+1, max(ys)+1, len(xs)))
     return components
 
+def clean_isolated_paper(crop):
+    rgba = np.asarray(crop.convert("RGBA"), dtype=np.uint8).copy()
+    rgb = rgba[:, :, :3].astype(np.int16)
+    alpha = rgba[:, :, 3] > 0
+    paper = alpha & (rgb.min(axis=2) >= 220) & ((rgb.max(axis=2)-rgb.min(axis=2)) <= 42)
+    support = alpha & ~paper
+    near_support = support.copy()
+    # Keep intentional white pixels that touch or sit immediately beside the colored/outlined sprite.
+    for _ in range(2):
+        expanded = near_support.copy()
+        expanded[1:, :] |= near_support[:-1, :]
+        expanded[:-1, :] |= near_support[1:, :]
+        expanded[:, 1:] |= near_support[:, :-1]
+        expanded[:, :-1] |= near_support[:, 1:]
+        expanded[1:, 1:] |= near_support[:-1, :-1]
+        expanded[1:, :-1] |= near_support[:-1, 1:]
+        expanded[:-1, 1:] |= near_support[1:, :-1]
+        expanded[:-1, :-1] |= near_support[1:, 1:]
+        near_support = expanded
+    rgba[paper & ~near_support, 3] = 0
+    rgba[rgba[:, :, 3] == 0, :3] = 0
+    return Image.fromarray(rgba, "RGBA")
+
 def extract_worker_cycles():
     # Segment each farmer pose from the transparent source by its connected silhouette.\n    # Five clean frames per source cycle are present in the supplied top row.
     # This avoids fixed-width cells that can cut a pose or include its neighbor.
@@ -88,7 +111,7 @@ def extract_worker_cycles():
         frames = []
         for i, (x0,y0,x1,y1,area) in enumerate(group):
             pad = 3
-            crop = atlas.crop((max(0,x0-pad), max(0,y0-pad), min(atlas.width,x1+pad), min(atlas.height,y1+pad)))
+            crop = atlas.crop((max(0,x0-pad), max(0,y0-pad), min(atlas.width,x1+pad), min(atlas.height,y1+pad)))\n            crop = clean_isolated_paper(crop)
             bbox = crop.getchannel("A").getbbox()
             if bbox is None:
                 raise RuntimeError(f"{name} frame {i} is empty")
