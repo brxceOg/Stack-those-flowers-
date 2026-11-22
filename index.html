@@ -164,7 +164,13 @@ function drawGround(){
 function drawBush(x,y){ctx.fillStyle='#4e8849';ctx.beginPath();ctx.arc(x,y,23,0,7);ctx.fill();ctx.fillStyle='#72a95a';ctx.beginPath();ctx.arc(x-7,y-7,12,0,7);ctx.fill()}
 function drawFlower(f){if(f.state==='picked')return;const sway=Math.sin(performance.now()/520+f.phase)*2;ctx.save();ctx.translate(f.x,f.y);ctx.translate(sway,0);if(atlasReady){const sx=FLOWER_SOURCE_X[f.type]??0;ctx.drawImage(atlas,sx,0,FLOWER_FRAME,FLOWER_FRAME,-22,-44,44,44)}else{ctx.strokeStyle='#347b3c';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(0,18);ctx.lineTo(0,-10);ctx.stroke();ctx.fillStyle=f.type==='tulip'?'#d94c5d':f.type==='rose'?'#e85b57':f.type==='red-bouquet'?'#d94b4b':f.type==='bluebells'?'#667bd7':f.type==='sunflower'?'#f5b83e':'#fff';for(let i=0;i<7;i++){ctx.beginPath();ctx.arc(Math.cos(i*6.28/7)*9,-14+Math.sin(i*6.28/7)*9,6,0,7);ctx.fill()}ctx.fillStyle='#e6b944';ctx.beginPath();ctx.arc(0,-14,5,0,7);ctx.fill()}ctx.restore()}
 function drawHouse(h){ctx.save();ctx.translate(h.x,h.y);ctx.fillStyle='rgba(42,75,39,.28)';ctx.beginPath();ctx.ellipse(0,-7,53,13,0,0,Math.PI*2);ctx.fill();if(workerHouse.complete&&workerHouse.naturalWidth>=896){ctx.imageSmoothingEnabled=true;ctx.drawImage(workerHouse,0,0,224,224,-48,-96,96,96)}if(selectedStructure&&selectedStructure.type==='house'&&selectedStructure.ref===h){ctx.strokeStyle='#ffe28a';ctx.lineWidth=3;ctx.strokeRect(-50,-98,100,100)}ctx.restore()}
-function isWorkerBoosted(w){return campfires.some(c=>Math.hypot(c.x-w.x,c.y-w.y)<=CAMPFIRE_RANGE)}
+function isWorkerBoosted(w){
+ // Campfires support towers, not moving worker sprites: each worker inherits
+ // the boost from the fixed position of the house that spawned them.
+ const towerX=Number.isFinite(w.houseX)?w.houseX:w.x;
+ const towerY=Number.isFinite(w.houseY)?w.houseY:w.y;
+ return campfires.some(c=>Math.hypot(c.x-towerX,c.y-towerY)<=CAMPFIRE_RANGE);
+}
 function drawCampfire(c){ctx.save();ctx.translate(c.x,c.y);ctx.fillStyle='rgba(42,55,34,.28)';ctx.beginPath();ctx.ellipse(0,-5,43,12,0,0,Math.PI*2);ctx.fill();if(campfireAtlas.complete&&campfireAtlas.naturalWidth>=CAMPFIRE_FRAME*4){const frame=Math.floor(campfireClock*9)%8,sx=(frame%4)*CAMPFIRE_FRAME,sy=Math.floor(frame/4)*CAMPFIRE_FRAME;ctx.imageSmoothingEnabled=true;ctx.drawImage(campfireAtlas,sx,sy,CAMPFIRE_FRAME,CAMPFIRE_FRAME,-48,-96,96,96)}if(selectedStructure&&selectedStructure.type==='campfire'&&selectedStructure.ref===c){ctx.strokeStyle='#ffe28a';ctx.lineWidth=3;ctx.strokeRect(-50,-98,100,100);ctx.strokeStyle='rgba(255,225,138,.7)';ctx.lineWidth=2;ctx.setLineDash([10,8]);ctx.beginPath();ctx.arc(0,-5,CAMPFIRE_RANGE,0,Math.PI*2);ctx.stroke()}ctx.restore()}
 const launcherAnim={state:'idle',time:0,queue:[],flowerType:'daisy'};
 const LAUNCHER_FRAME_W=224,LAUNCHER_FRAME_H=150;
