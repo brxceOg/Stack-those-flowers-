@@ -231,7 +231,7 @@ function loadGame(){try{const data=JSON.parse(localStorage.getItem(SAVE_KEY)||'n
  // legacy placements that land in the same cell. Persist the migrated layout.
  const usedCells=new Set();houses=(Array.isArray(data.houses)?data.houses:[]).filter(h=>Number.isFinite(h.x)&&Number.isFinite(h.y)).map(h=>{const p=snapStructurePoint(h);return{x:Math.max(BUILD_GRID/2,Math.min(W-BUILD_GRID/2,p.x)),y:Math.max(BUILD_GRID/2,Math.min(H-BUILD_GRID/2,p.y))}}).filter(h=>{const key=h.x+','+h.y;if(usedCells.has(key))return false;usedCells.add(key);return true;});
  campfires=Array.isArray(data.campfires)?data.campfires.filter(c=>Number.isFinite(c.x)&&Number.isFinite(c.y)).map(c=>snapStructurePoint(c)):[];
- dyeTents=Array.isArray(data.dyeTents)?data.dyeTents.filter(t=>Number.isFinite(t.x)&&Number.isFinite(t.y)).map(t=>({...snapStructurePoint(t),brewing:false,brewTimer:0})):[];
+ dyeTents=Array.isArray(data.dyeTents)?data.dyeTents.filter(t=>Number.isFinite(t.x)&&Number.isFinite(t.y)).map(t=>({...snapStructurePoint(t),brewing:!!t.brewing,brewTimer:Math.max(0,Number(t.brewTimer)||0),brewAnim:Math.max(0,Number(t.brewAnim)||0)})):[];
  dyeVats=Array.isArray(data.dyeVats)?data.dyeVats.filter(v=>Number.isFinite(v.x)&&Number.isFinite(v.y)).map(v=>({...v,type:Math.max(0,Math.min(7,Math.floor(Number(v.type)||0)))})):[];
  dyeMakers=dyeTents.map(t=>({id:nextDyeMakerId++,tent:t,x:t.x,y:t.y+48,state:'idle',anim:0,carry:false}));
  workers=houses.map(h=>({id:nextWorkerId++,houseX:h.x,houseY:h.y,x:h.x,y:h.y+35,state:'search',anim:0,carry:null,target:null,pickingFlower:null}));saveGame();}catch(e){}}
@@ -571,9 +571,9 @@ function hideStructureMenu(){document.getElementById('structureMenu').classList.
 function openStructureMenu(type,ref,clientX,clientY){
  selectedStructure={type,ref};
  const menu=document.getElementById('structureMenu'),title=document.getElementById('structureMenuTitle');
- const category=type==='house'?'Worker House':'Campfire';
+ const category=type==='house'?'Worker House':type==='campfire'?'Campfire':'Dye Maker Tent';
  title.textContent=category+' Upgrades';
- document.getElementById('structureMenuScope').textContent='Shared by every '+(type==='house'?'Worker House':'Campfire');
+ document.getElementById('structureMenuScope').textContent='Shared by every '+(type==='house'?'Worker House':type==='campfire'?'Campfire':'Dye Maker Tent');
  const upgradeOne=document.getElementById('structureUpgradeOne'),upgradeTwo=document.getElementById('structureUpgradeTwo');
  if(type==='house'){
   const cost=workerRunUpgradeCost();
@@ -581,7 +581,7 @@ function openStructureMenu(type,ref,clientX,clientY){
   upgradeOne.textContent='🏃 Run Speed +5% · '+cost+' flowers';
   upgradeTwo.disabled=true;upgradeTwo.textContent='✦ More upgrades · Coming soon';
  }else{
-  upgradeOne.disabled=true;upgradeOne.textContent='⬆ Campfire upgrade · Coming soon';
+  upgradeOne.disabled=true;upgradeOne.textContent=type==='campfire'?'⬆ Campfire upgrade · Coming soon':'⬆ Dye production upgrade · Coming soon';
   upgradeTwo.disabled=true;upgradeTwo.textContent='✦ More upgrades · Coming soon';
  }
  const rect=document.getElementById('game').getBoundingClientRect(),width=164,height=198,gap=10;
@@ -596,13 +596,15 @@ function findStructureAt(p){
  if(house)return{type:'house',ref:house};
  const fire=campfires.find(c=>Math.abs(p.x-c.x)<=30&&p.y>=c.y-54&&p.y<=c.y+8);
  if(fire)return{type:'campfire',ref:fire};
+ const tent=dyeTents.find(t=>Math.abs(p.x-t.x)<=72&&p.y>=t.y-120&&p.y<=t.y+28);
+ if(tent)return{type:'tent',ref:tent};
  return null;
 }
-function showSaleConfirmation(type,ref,refund){pendingSale={type,ref,refund};document.getElementById('confirmTitle').textContent='Sell '+(type==='house'?'Worker House':'Campfire')+'?';document.getElementById('confirmText').textContent='This structure will be removed. You will receive '+refund+' flowers back.';document.getElementById('confirmShade').classList.add('show')}
-document.getElementById('structureSellButton').onclick=()=>{if(!selectedStructure)return;const {type,ref}=selectedStructure;hideStructureMenu();showSaleConfirmation(type,ref,type==='house'?5:Math.floor(CAMPFIRE_COST/2))};
+function showSaleConfirmation(type,ref,refund){pendingSale={type,ref,refund};document.getElementById('confirmTitle').textContent='Sell '+(type==='house'?'Worker House':type==='campfire'?'Campfire':'Dye Maker Tent')+'?';document.getElementById('confirmText').textContent='This structure will be removed. You will receive '+refund+' flowers back.';document.getElementById('confirmShade').classList.add('show')}
+document.getElementById('structureSellButton').onclick=()=>{if(!selectedStructure)return;const {type,ref}=selectedStructure;hideStructureMenu();showSaleConfirmation(type,ref,type==='house'?5:type==='campfire'?Math.floor(CAMPFIRE_COST/2):17)};
 document.getElementById('structureMenuClose').onclick=()=>{hideStructureMenu();selectedStructure=null};
 document.getElementById('cancelSaleButton').onclick=()=>{pendingSale=null;document.getElementById('confirmShade').classList.remove('show');selectedStructure=null};
-document.getElementById('confirmSaleButton').onclick=()=>{if(!pendingSale)return;const {type,ref,refund}=pendingSale;if(type==='house'){const index=houses.indexOf(ref);if(index>=0){const worker=workers.find(w=>w.houseX===ref.x&&w.houseY===ref.y);if(worker){releaseFlowerReservation(worker);workers=workers.filter(w=>w!==worker)}houses.splice(index,1)}}else{const index=campfires.indexOf(ref);if(index>=0)campfires.splice(index,1)}totalFlowers+=refund;saveGame();pendingSale=null;selectedStructure=null;selling=false;document.getElementById('confirmShade').classList.remove('show');document.getElementById('placeTip').classList.remove('show');toast('Structure sold · '+refund+' flowers refunded')};
+document.getElementById('confirmSaleButton').onclick=()=>{if(!pendingSale)return;const {type,ref,refund}=pendingSale;if(type==='house'){const index=houses.indexOf(ref);if(index>=0){const worker=workers.find(w=>w.houseX===ref.x&&w.houseY===ref.y);if(worker){releaseFlowerReservation(worker);workers=workers.filter(w=>w!==worker)}houses.splice(index,1)}}else if(type==='campfire'){const index=campfires.indexOf(ref);if(index>=0)campfires.splice(index,1)}else{const index=dyeTents.indexOf(ref);if(index>=0)dyeTents.splice(index,1);dyeMakers=dyeMakers.filter(w=>w.tent!==ref)}totalFlowers+=refund;saveGame();pendingSale=null;selectedStructure=null;selling=false;document.getElementById('confirmShade').classList.remove('show');document.getElementById('placeTip').classList.remove('show');toast('Structure sold · '+refund+' flowers refunded')};
 function zoom(f){camera.zoom=Math.max(.38,Math.min(1.35,camera.zoom*f));clampCamera()}
 document.getElementById('zoomIn').onclick=()=>zoom(1.2);document.getElementById('zoomOut').onclick=()=>zoom(.83);document.getElementById('homeView').onclick=()=>{camera={x:center.x,y:center.y,zoom:.78}};
 })();
