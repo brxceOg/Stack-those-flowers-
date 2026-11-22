@@ -110,76 +110,77 @@ const workerToss=new Image();workerToss.src='assets/worker-toss.png?v=matte-unmi
  let dyeMakerCanvas=null,dyeTentCanvas=null,dyeVatCanvas=null;
  let dyeMakerRunFrames=[],dyeMakerCarryFrames=[],dyeMakerIdleFrame=null,dyeMakerPickFrame=null;
  function keyMagentaSheet(img){const cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;const cx=cv.getContext('2d',{willReadFrequently:true});cx.drawImage(img,0,0);const im=cx.getImageData(0,0,cv.width,cv.height),d=im.data;for(let y=0;y<cv.height;y++)for(let x=0;x<cv.width;x++){const i=(y*cv.width+x)*4,r=d[i],g=d[i+1],b=d[i+2];if(r>175&&b>145&&g<90&&r-g>75&&b-g>65)d[i+3]=0;}cx.putImageData(im,0,0);return cv}
- // Segment the entire keyed sheet into connected artwork components.
- // Each output canvas is bounded by that sprite's measured opaque pixels;
- // no fixed cell widths or per-frame crop rectangles are used.
+ // Each pose has its own hand-defined source window. These are individual
+ // cutout instructions, not an inferred row/cell layout: each window contains
+ // exactly one character pose and is processed independently before assembly.
+ // Coordinates are authored against the 1380 x 690 reference and scaled to
+ // the source image's native dimensions.
  let dyeMakerAtlas=null,dyeMakerFrameMeta=[];
+ const dyeMakerPoseWindows=[
+  // Empty-handed running poses: top row (4), then second row (6).
+  {x:55,y:0,w:165,h:194},{x:435,y:0,w:165,h:194},
+  {x:805,y:0,w:185,h:194},{x:1180,y:0,w:170,h:194},
+  {x:55,y:188,w:175,h:190},{x:255,y:188,w:180,h:190},
+  {x:445,y:188,w:180,h:190},{x:790,y:188,w:190,h:190},
+  {x:1000,y:188,w:185,h:190},{x:1180,y:188,w:185,h:190},
+  // Third row: two standing poses, two crouched poses, and two reaching poses.
+  {x:65,y:374,w:165,h:190},{x:260,y:374,w:180,h:190},
+  {x:450,y:374,w:185,h:190},{x:785,y:374,w:195,h:190},
+  {x:1000,y:374,w:185,h:190},{x:1180,y:374,w:190,h:190},
+  // Flower-carrying poses: bottom row (6).
+  {x:60,y:560,w:175,h:130},{x:255,y:560,w:185,h:130},
+  {x:450,y:560,w:185,h:130},{x:785,y:560,w:195,h:130},
+  {x:1000,y:560,w:190,h:130},{x:1180,y:560,w:190,h:130}
+ ];
  function extractDyeMakerSprites(){
-  const width=dyeMakerCanvas.width,height=dyeMakerCanvas.height;
-  const data=dyeMakerCanvas.getContext('2d',{willReadFrequently:true}).getImageData(0,0,width,height).data;
-  const visited=new Uint8Array(width*height),stack=new Int32Array(width*height),components=[];
-  // Four-way connectivity prevents diagonally adjacent outlines from joining.
-  for(let y=0;y<height;y++)for(let x=0;x<width;x++){
-   const seed=y*width+x;
-   if(visited[seed]||data[seed*4+3]<=12)continue;
-   let minX=x,maxX=x,minY=y,maxY=y,count=0,sp=0;
-   stack[sp++]=seed;visited[seed]=1;
-   while(sp){
-    const p=stack[--sp],px=p%width,py=(p/width)|0;count++;
-    if(px<minX)minX=px;if(px>maxX)maxX=px;if(py<minY)minY=py;if(py>maxY)maxY=py;
-    const neighbors=[p-1,p+1,p-width,p+width];
-    for(let k=0;k<4;k++){
-     const ni=neighbors[k];
-     if((k===0&&px===0)||(k===1&&px===width-1)||(k===2&&py===0)||(k===3&&py===height-1))continue;
-     if(!visited[ni]&&data[ni*4+3]>12){visited[ni]=1;stack[sp++]=ni}
-    }
+  const sourceW=dyeMakerCanvas.width,sourceH=dyeMakerCanvas.height;
+  const refX=sourceW/1380,refY=sourceH/690;
+  const isolated=dyeMakerPoseWindows.map((box,index)=>{
+   const sx=Math.round(box.x*refX),sy=Math.round(box.y*refY);
+   const sw=Math.min(sourceW-sx,Math.round(box.w*refX));
+   const sh=Math.min(sourceH-sy,Math.round(box.h*refY));
+   const crop=document.createElement('canvas');crop.width=sw;crop.height=sh;
+   const cc=crop.getContext('2d',{willReadFrequently:true});
+   cc.drawImage(dyeMakerCanvas,sx,sy,sw,sh,0,0,sw,sh);
+   // Trim to the actual opaque artwork inside this one manually isolated window.
+   const pixels=cc.getImageData(0,0,sw,sh).data;
+   let minX=sw,minY=sh,maxX=-1,maxY=-1;
+   for(let y=0;y<sh;y++)for(let x=0;x<sw;x++){
+    if(pixels[(y*sw+x)*4+3]>12){if(x<minX)minX=x;if(x>maxX)maxX=x;if(y<minY)minY=y;if(y>maxY)maxY=y}
    }
-   if(count>=90)components.push({minX,maxX,minY,maxY,count,centerY:(minY+maxY)/2});
-  }
-  // Row assignment uses the measured top edge, not an assumed frame grid.
-  components.sort((a,b)=>a.minY-b.minY||a.minX-b.minX);
-  const rows=[];
-  for(const c of components){
-   let row=rows.find(r=>Math.abs(r.top-c.minY)<58);
-   if(!row){row={top:c.minY,items:[]};rows.push(row)}
-   row.items.push(c);row.top=row.items.reduce((sum,v)=>sum+v.minY,0)/row.items.length;
-  }
-  rows.sort((a,b)=>a.top-b.top);
-  rows.forEach(r=>r.items.sort((a,b)=>a.minX-b.minX));
-  // Make isolated, alpha-bounded frame canvases first.
-  const ordered=rows.flatMap(r=>r.items).map(c=>{
-   const pad=3,l=Math.max(0,c.minX-pad),t=Math.max(0,c.minY-pad),right=Math.min(width,c.maxX+pad+1),bottom=Math.min(height,c.maxY+pad+1);
-   const frame=document.createElement('canvas');frame.width=right-l;frame.height=bottom-t;
-   frame.getContext('2d').drawImage(dyeMakerCanvas,l,t,frame.width,frame.height,0,0,frame.width,frame.height);
-   return frame;
+   if(maxX<minX||maxY<minY)throw new Error('Dye maker pose '+index+' was empty; review its individual source window.');
+   const trimmed=document.createElement('canvas');trimmed.width=maxX-minX+1;trimmed.height=maxY-minY+1;
+   trimmed.getContext('2d').drawImage(crop,minX,minY,trimmed.width,trimmed.height,0,0,trimmed.width,trimmed.height);
+   return trimmed;
   });
-  // Pack those isolated frames into a fresh transparent animation atlas.
-  // Every frame has a 14px transparent gutter to prevent atlas sampling bleed.
-  const gap=14,pad=4,cellH=Math.max(...ordered.map(f=>f.height))+pad*2;
+  // Rebuild a clean 6-column x 4-row atlas. Every pose gets its own 192px
+  // transparent cell, consistent scale, centered horizontal anchor and feet baseline.
+  const cell=192,cols=6,rows=4,gutter=20;
   const atlas=document.createElement('canvas');
-  atlas.width=ordered.reduce((sum,f)=>sum+f.width+gap+pad, pad);
-  atlas.height=cellH;
-  const ac=atlas.getContext('2d'),meta=[];let x=pad;
-  ordered.forEach(frame=>{
-   const y=pad+(cellH-pad*2-frame.height);
-   ac.drawImage(frame,x,y);
-   meta.push({x,y,w:frame.width,h:frame.height});
-   x+=frame.width+gap;
+  atlas.width=cols*cell+(cols-1)*gutter;
+  atlas.height=rows*cell+(rows-1)*gutter;
+  const ac=atlas.getContext('2d'),meta=[];
+  isolated.forEach((sprite,index)=>{
+   const col=index%cols,row=Math.floor(index/cols);
+   const cellX=col*(cell+gutter),cellY=row*(cell+gutter);
+   const scale=Math.min(166/sprite.width,174/sprite.height);
+   const drawW=sprite.width*scale,drawH=sprite.height*scale;
+   const drawX=cellX+(cell-drawW)/2,drawY=cellY+180-drawH;
+   ac.drawImage(sprite,drawX,drawY,drawW,drawH);
+   meta.push({x:drawX,y:drawY,w:drawW,h:drawH});
   });
-  return {rows,atlas,meta};
+  return {atlas,meta,rows:[
+   meta.slice(0,4),meta.slice(4,10),meta.slice(10,16),meta.slice(16,22)
+  ]};
  }
  dyeMakerSheet.onload=()=>{
   dyeMakerCanvas=keyMagentaSheet(dyeMakerSheet);
   const extracted=extractDyeMakerSprites();
   dyeMakerAtlas=extracted.atlas;dyeMakerFrameMeta=extracted.meta;
-  const rowFrames=extracted.rows.map(row=>row.items.map(c=>dyeMakerFrameMeta[extracted.rows.slice(0,extracted.rows.indexOf(row)).reduce((n,r)=>n+r.items.length,0)+row.items.indexOf(c)]));
-  // Both running rows are sequenced left-to-right into one continuous cycle.
-  dyeMakerRunFrames=[...(rowFrames[0]||[]),...(rowFrames[1]||[])];
-  // Row three supplies standing idle and crouching flower-pick poses.
-  dyeMakerIdleFrame=rowFrames[2]?.[0]||null;
-  dyeMakerPickFrame=rowFrames[2]?.[2]||null;
-  // The bottom row is the dedicated flower-carrying walk cycle.
-  dyeMakerCarryFrames=rowFrames[3]||[];
+  dyeMakerRunFrames=[...extracted.rows[0],...extracted.rows[1]];
+  dyeMakerIdleFrame=extracted.rows[2][0];
+  dyeMakerPickFrame=extracted.rows[2][2];
+  dyeMakerCarryFrames=extracted.rows[3];
  };
  dyeTentSheet.onload=()=>{dyeTentCanvas=keyMagentaSheet(dyeTentSheet)};
  dyeVatSheet.onload=()=>{dyeVatCanvas=keyMagentaSheet(dyeVatSheet)};
