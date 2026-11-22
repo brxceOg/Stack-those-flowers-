@@ -104,7 +104,7 @@ let workerWalk=new Image(),workerRun=new Image(),workerPick=new Image(),workerCa
 const baseWorkerSheet=new Image();baseWorkerSheet.src='IMG_1393.jpeg?v=final-base-worker-sheet-1393';
 const dyeMakerSheet=new Image();dyeMakerSheet.src='IMG_1394.jpeg?v=final-witch-dye-maker-sheet-1394';
 const workerDrinkSheet=new Image();workerDrinkSheet.src='IMG_1395.jpeg?v=drinking-sequence-1395';
-let workerDrinkWalk=null,workerDrinkSequence=null;
+const workerDrinkWalk=new Image(),workerDrinkSequence=new Image();
 const dyeTentSheet=new Image();dyeTentSheet.src='IMG_1384.jpeg';
 const dyeVatSheet=new Image();dyeVatSheet.src='IMG_1386.jpeg';
 let dyeMakerCanvas=null,dyeTentCanvas=null,dyeVatCanvas=null;
@@ -230,8 +230,8 @@ workerDrinkSheet.onload=()=>{
  // and the lower row is the four-step pick-up-and-drink sequence.
  const poses=extractGridPoseCanvases(workerDrinkSheet,2);
  const scale=sharedPoseScale(poses);
- workerDrinkWalk=packPoseStrip(poses.slice(0,4),scale);
- workerDrinkSequence=packPoseStrip(poses.slice(4,8),scale);
+ setCanvasImage(workerDrinkWalk,packPoseStrip(poses.slice(0,4),scale));
+ setCanvasImage(workerDrinkSequence,packPoseStrip(poses.slice(4,8),scale));
 };
 dyeMakerSheet.onload=()=>{
  const poses=extractGridPoseCanvases(dyeMakerSheet),packed=packDyeMakerAtlas(poses);
@@ -603,13 +603,27 @@ function drawWorker(w){
    spriteCtx.save();spriteCtx.translate(64,64);spriteCtx.rotate(-.28);spriteCtx.fillStyle=shine;spriteCtx.fillRect(-82,-82,164,164);spriteCtx.restore();
   }
   if(dyeBuffed){
-   const rainbow=spriteCtx.createLinearGradient(8,4,120,124);
-   rainbow.addColorStop(0,'rgba(255,65,115,.48)');rainbow.addColorStop(.2,'rgba(255,165,55,.42)');rainbow.addColorStop(.4,'rgba(255,239,75,.40)');rainbow.addColorStop(.6,'rgba(65,220,125,.42)');rainbow.addColorStop(.8,'rgba(65,155,255,.45)');rainbow.addColorStop(1,'rgba(190,90,255,.48)');
-   spriteCtx.globalAlpha=.72;spriteCtx.fillStyle=rainbow;spriteCtx.fillRect(0,0,128,128);spriteCtx.globalAlpha=1;
-   const sweepX=((campfireClock*58+(w.x+w.y)*.12)%210)-42;
-   const sweep=spriteCtx.createLinearGradient(sweepX-18,0,sweepX+18,0);
-   sweep.addColorStop(0,'rgba(255,255,255,0)');sweep.addColorStop(.42,'rgba(255,255,255,.12)');sweep.addColorStop(.5,'rgba(255,255,255,.92)');sweep.addColorStop(.58,'rgba(255,255,255,.16)');sweep.addColorStop(1,'rgba(255,255,255,0)');
-   spriteCtx.save();spriteCtx.translate(64,64);spriteCtx.rotate(-.28);spriteCtx.fillStyle=sweep;spriteCtx.fillRect(-82,-82,164,164);spriteCtx.restore();
+   // Rainbow Rush is a persistent moving spectrum band, clipped to the worker's
+   // opaque pixels by source-atop. It is not a burst of particles or a full-screen aura.
+   const phase=(campfireClock*34+(w.x+w.y)*.035)%230-70;
+   const rainbow=spriteCtx.createLinearGradient(phase-58,0,phase+58,0);
+   rainbow.addColorStop(0,'rgba(255,55,105,0)');
+   rainbow.addColorStop(.12,'rgba(255,65,95,.66)');
+   rainbow.addColorStop(.28,'rgba(255,166,48,.72)');
+   rainbow.addColorStop(.43,'rgba(255,239,72,.70)');
+   rainbow.addColorStop(.58,'rgba(55,220,120,.72)');
+   rainbow.addColorStop(.73,'rgba(55,155,255,.72)');
+   rainbow.addColorStop(.88,'rgba(178,85,255,.68)');
+   rainbow.addColorStop(1,'rgba(178,85,255,0)');
+   spriteCtx.save();spriteCtx.translate(64,64);spriteCtx.rotate(-.34);
+   spriteCtx.globalAlpha=.82;spriteCtx.fillStyle=rainbow;spriteCtx.fillRect(-96,-96,192,192);
+   // A slim white glint travels just behind the spectrum to read as a shine.
+   const glintX=phase+34,glint=spriteCtx.createLinearGradient(glintX-7,0,glintX+7,0);
+   glint.addColorStop(0,'rgba(255,255,255,0)');
+   glint.addColorStop(.5,'rgba(255,255,255,.88)');
+   glint.addColorStop(1,'rgba(255,255,255,0)');
+   spriteCtx.globalAlpha=.9;spriteCtx.fillStyle=glint;spriteCtx.fillRect(-96,-96,192,192);
+   spriteCtx.restore();spriteCtx.globalAlpha=1;
   }
   spriteCtx.restore();ctx.drawImage(spriteCanvas,-64,-64);
  }
@@ -714,7 +728,7 @@ function assignFlower(w){
   }
   else if(w.state==='drinking'){
    w.anim+=dt;w.timer-=dt;
-   if(w.timer<=0){w.drinkVat=null;w.dyeBuffTimer=90;w.state='search';w.anim=0;emitRainbowBurst(w.x,w.y-34);saveGame()}
+   if(w.timer<=0){w.drinkVat=null;w.dyeBuffTimer=90;w.state='search';w.anim=0;saveGame()}
   }
   else {
   if(w.state==='idle'||w.state==='search')assignFlower(w);
