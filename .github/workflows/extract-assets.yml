@@ -41,7 +41,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add assets/flower-atlas.png assets/flower-pile-atlas.png assets/flower-sprites.png assets/worker-walk.png assets/worker-run.png assets/worker-idle.png assets/worker-pick.png assets/worker-carry.png assets/worker-frames/*.png assets/flower-launcher-collection.png assets/flower-launcher-charge.png assets/flower-launcher-fire.png assets/flower-launcher-frames/*.png assets/worker-toss.png assets/worker-frames/toss-01.png
+          git add assets/flower-atlas.png assets/flower-pile-atlas.png assets/flower-sprites.png assets/worker-walk.png assets/worker-run.png assets/worker-idle.png assets/worker-pick.png assets/worker-carry.png assets/worker-carry-idle.png assets/worker-frames/*.png assets/flower-launcher-collection.png assets/flower-launcher-charge.png assets/flower-launcher-fire.png assets/flower-launcher-frames/*.png assets/worker-toss.png assets/worker-frames/toss-01.png
           if git diff --cached --quiet; then
             echo "No generated asset changes."
           else
