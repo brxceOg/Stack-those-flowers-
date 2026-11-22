@@ -41,7 +41,16 @@ def clean_cell(cell):
                             seen[ny, nx] = True
                             stack.append((ny, nx))
             if len(pixels) >= 12:
-                components.append(pixels)
+                # Crop-edge components belong to a neighboring illustration
+                # when two staggered rows overlap the same rectangular ROI.
+                # All six intended flowers have a transparent safety margin
+                # inside their own crop, so reject these edge-touching fragments.
+                touches_crop_edge = any(
+                    y == 0 or x == 0 or y == h-1 or x == w-1
+                    for y, x in pixels
+                )
+                if not touches_crop_edge:
+                    components.append(pixels)
     if not components:
         raise RuntimeError("A flower cell became empty during magenta removal")
     # Keep the main flower silhouette and any detached leaves/details close to it.
