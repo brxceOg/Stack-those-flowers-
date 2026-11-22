@@ -105,7 +105,9 @@ function drawWorker(w){
  const bob=moving?Math.sin(w.anim*(running?15:10))*1.2:0;
  ctx.translate(0,bob);
  ctx.imageSmoothingEnabled=true;
- ctx.drawImage(sheet,frame*FRAME_W,0,FRAME_W,FRAME_H,-34,-72,68,72);
+ // Render the square source frame at a smaller 58×58 world size; matching
+ // source and destination aspect ratios keeps the cartoon artwork crisp and undistorted.
+ ctx.drawImage(sheet,frame*FRAME_W,0,FRAME_W,FRAME_H,-29,-58,58,58);
  ctx.restore()
 }
 function drawWorld(){
