@@ -366,12 +366,17 @@ function drawWorker(w){
  // Use only individually isolated frames from the new source sheet.
  if(!sheet.complete||!sheet.naturalWidth){ctx.restore();return}
  const FRAME_W=192,FRAME_H=192;
- const count=Math.max(1,Math.floor(sheet.naturalWidth/FRAME_W));
+ // The supplied run strip repeats the same two poses twice (A/B/A/B), so
+ // use the four distinct locomotion frames from the walk strip while the
+ // worker is in a running state. The faster cadence and stronger bob make
+ // this read as a run without visibly stuttering between duplicate poses.
+ const poseSheet=running&&workerWalk.complete&&workerWalk.naturalWidth?workerWalk:sheet;
+ const count=Math.max(1,Math.floor(poseSheet.naturalWidth/FRAME_W));
  // The picking sheet now contains only two crouch/grab poses.
  // Give each pose a clear, even hold; never advance into a walk frame.
  const pickFrame=picking?(w.anim<.8?0:1):0;
- const frame=picking?pickFrame:(moving?(Math.floor(w.anim*(running?10:7))%count):0);
- const bob=moving?Math.sin(w.anim*(running?15:10))*1.2:0;
+ const frame=picking?pickFrame:(moving?(Math.floor(w.anim*(running?12:7))%count):0);
+ const bob=moving?Math.sin(w.anim*(running?18:10))*(running?2:1.2):0;
  ctx.translate(0,bob);
  ctx.imageSmoothingEnabled=true;
  // Render the square source frame at a smaller 58×58 world size; matching
@@ -390,7 +395,7 @@ function drawWorker(w){
   const tossW=tossH*(sheet.naturalWidth/sheet.naturalHeight);
   spriteCtx.drawImage(sheet,-tossW/2,-tossH,tossW,tossH);
  }else{
-  spriteCtx.drawImage(sheet,frame*FRAME_W,0,FRAME_W,FRAME_H,-29,(sheet===workerWalk?-60:-58),58,58);
+  spriteCtx.drawImage(poseSheet,frame*FRAME_W,0,FRAME_W,FRAME_H,-29,(poseSheet===workerWalk?-60:-58),58,58);
  }
  if(boosted){
   spriteCtx.restore();
