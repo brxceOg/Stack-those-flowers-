@@ -421,6 +421,7 @@ function drawWorld(){
  for(const t of tossedFlowers)drawTossedFlower(t);
   for(const l of launched)drawMachineFlower(l);
   for(const w of workers)drawWorker(w);
+  for(const pop of upgradePops)drawUpgradePop(pop);
  if(placing){const p=structureCellAtScreen(pointer.x,pointer.y),allowed=!!housingSectionAt(p)&&!houses.some(h=>dist(h,p)<BUILD_GRID)&&!campfires.some(c=>dist(c,p)<BUILD_GRID);ctx.save();ctx.fillStyle=allowed?'rgba(115,205,255,.30)':'rgba(255,120,100,.22)';ctx.strokeStyle=allowed?'#8ec9ff':'#ff9a82';ctx.lineWidth=3/camera.zoom;ctx.fillRect(p.x-BUILD_GRID/2,p.y-BUILD_GRID/2,BUILD_GRID,BUILD_GRID);ctx.strokeRect(p.x-BUILD_GRID/2,p.y-BUILD_GRID/2,BUILD_GRID,BUILD_GRID);if(placing==='campfire'){ctx.strokeStyle='rgba(255,205,96,.55)';ctx.lineWidth=2/camera.zoom;ctx.beginPath();ctx.arc(p.x,p.y,CAMPFIRE_RANGE,0,Math.PI*2);ctx.stroke()}ctx.restore()}
  ctx.restore();
 }
@@ -453,8 +454,19 @@ function assignFlower(w){
  // Reserve synchronously at selection time so another worker cannot claim it.
  target.reservedBy=w.id;w.target=target;w.state='toFlower';return true;
 }
-function update(dt){
+function drawUpgradePop(pop){
+  const progress=Math.min(1,pop.time/pop.duration),fade=1-progress;
+  const x=pop.x+18+progress*16,y=pop.y-49-progress*34;
+  ctx.save();ctx.globalAlpha=fade;ctx.translate(x,y);ctx.rotate(-.08);
+  // Chunky, friendly green arrow with a dark outline and a small highlight.
+  ctx.lineJoin='round';ctx.lineCap='round';ctx.lineWidth=3;ctx.strokeStyle='#285a35';ctx.fillStyle='#72d66d';
+  ctx.beginPath();ctx.moveTo(0,9);ctx.lineTo(0,-5);ctx.lineTo(-7,1);ctx.lineTo(-10,-2);ctx.lineTo(2,-15);ctx.lineTo(14,-2);ctx.lineTo(11,1);ctx.lineTo(4,-5);ctx.lineTo(4,9);ctx.closePath();ctx.fill();ctx.stroke();
+  ctx.strokeStyle='rgba(224,255,194,.9)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(1,-5);ctx.lineTo(2,-11);ctx.lineTo(7,-5);ctx.stroke();
+  ctx.restore();
+ }
+ function update(dt){
  campfireClock+=dt;updateLauncher(dt);
+  for(const pop of upgradePops)pop.time+=dt;upgradePops=upgradePops.filter(pop=>pop.time<pop.duration);
  saveClock+=dt;if(saveClock>=2.5){saveClock=0;saveGame()}
  for(const f of flowers){if(f.state==='picked'&&f.respawn>0){f.respawn-=dt;if(f.respawn<=0){f.state='growing';f.respawn=0;delete f.reservedBy}}}
  for(const w of workers){
@@ -524,7 +536,10 @@ document.getElementById('structureUpgradeOne').onclick=()=>{
  if(!selectedStructure||selectedStructure.type!=='house')return;
  const cost=workerRunUpgradeCost();
  if(totalFlowers<cost){toast('You need '+cost+' flowers for Run Speed');return}
- totalFlowers-=cost;workerRunUpgradeLevel++;saveGame();
+ totalFlowers-=cost;workerRunUpgradeLevel++;
+  // Celebrate a successful category-wide purchase beside every worker's head.
+  for(const worker of workers)upgradePops.push({x:worker.x,y:worker.y,time:0,duration:1.05});
+  saveGame();
  toast('Worker Run Speed upgraded to +'+(workerRunUpgradeLevel*5)+'% · all workers improved');
  openStructureMenu(selectedStructure.type,selectedStructure.ref,...(()=>{const r=document.getElementById('game').getBoundingClientRect();const m=document.getElementById('structureMenu').getBoundingClientRect();return[r.left+m.left,r.top+m.top+m.height/2]})());
 };
