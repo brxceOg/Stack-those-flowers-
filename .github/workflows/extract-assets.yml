@@ -8,6 +8,7 @@ on:
       - "IMG_1371.jpeg"
       - "scripts/extract_transparency.py"
       - "scripts/extract_worker_sheet.py"
+      - ".github/workflows/extract-assets.yml"
   workflow_dispatch:
 permissions:
   contents: write
