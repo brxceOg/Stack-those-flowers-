@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#294b35">
+<title>Stack Those Flowers</title>
+<style>
+:root{color-scheme:dark;--ink:#273b2d;--cream:#fff4d8;--gold:#f6c85f;--green:#477a4c;--deep:#213c2b}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#203b2a;font-family:ui-rounded,"Trebuchet MS",system-ui,sans-serif;color:var(--cream);touch-action:none}
+#game{position:fixed;inset:0;overflow:hidden;background:#8cbd69}
+canvas{display:block;width:100%;height:100%;touch-action:none;image-rendering:pixelated}
+.topbar{position:absolute;z-index:5;top:env(safe-area-inset-top,0px);left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:10px 12px;pointer-events:none}
+.brand,.stat{background:rgba(35,65,43,.94);border:2px solid #a5c779;border-radius:14px;box-shadow:0 3px 0 rgba(0,0,0,.2);padding:7px 11px;text-shadow:1px 2px #1e3926}
+.brand{font-weight:1000;letter-spacing:.5px;font-size:14px}.stats{display:flex;gap:7px}.stat{font-size:12px;font-weight:800;white-space:nowrap}
+#menuBtn{position:absolute;z-index:8;left:12px;top:calc(env(safe-area-inset-top,0px) + 62px);width:48px;height:48px;border:3px solid #e9d69a;border-radius:14px;background:#385f3c;color:#fff4d8;font-size:23px;box-shadow:0 4px 0 #203b2a}
+#buildPanel{position:absolute;z-index:7;left:0;top:calc(env(safe-area-inset-top,0px) + 118px);bottom:env(safe-area-inset-bottom,0px);width:min(260px,82vw);padding:14px;background:rgba(35,65,43,.97);border:2px solid #a5c779;border-left:0;border-radius:0 18px 18px 0;transform:translateX(-105%);transition:transform .22s ease;box-shadow:6px 0 20px #18301f66;touch-action:pan-y;overflow:auto}
+#buildPanel.open{transform:translateX(0)}h2{font-size:18px;margin:0 0 8px}.hint{font-size:12px;line-height:1.4;color:#d8e8bd;margin:0 0 12px}
+.buildCard{display:flex;align-items:center;gap:10px;width:100%;padding:10px;margin:8px 0;border:2px solid #a4c578;border-radius:13px;background:#416e43;color:#fff5dc;text-align:left;font-weight:900;font-size:14px}
+.buildCard:active,#menuBtn:active{transform:translateY(2px);filter:brightness(1.15)}.buildIcon{width:42px;height:42px;display:grid;place-items:center;background:#d7e5a0;border-radius:10px;font-size:25px}
+.small{display:block;font-size:11px;font-weight:600;color:#dce9c1;margin-top:3px}
+#toast{position:absolute;z-index:9;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);transform:translate(-50%,18px);opacity:0;transition:.2s;background:#294b35;border:2px solid #f1d98e;border-radius:14px;padding:10px 14px;font-size:13px;font-weight:800;pointer-events:none;white-space:nowrap;box-shadow:0 4px 12px #14291d88}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+#placeTip{position:absolute;z-index:4;left:50%;top:calc(env(safe-area-inset-top,0px) + 66px);transform:translateX(-50%);display:none;background:#fff1c9;color:#304b30;border:2px solid #9b7d42;border-radius:12px;padding:8px 12px;font-weight:900;font-size:12px;white-space:nowrap}
+#placeTip.show{display:block}
+#zoomControls{position:absolute;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);z-index:4;display:flex;flex-direction:column;gap:7px}
+#zoomControls button{width:42px;height:42px;border:2px solid #d8d99b;border-radius:12px;background:#385f3c;color:#fff;font-size:22px;font-weight:900;box-shadow:0 3px 0 #203b2a}
+#help{position:absolute;right:12px;top:calc(env(safe-area-inset-top,0px) + 64px);z-index:4;background:#294b35cc;border:1px solid #a5c779;border-radius:10px;padding:7px 9px;font-size:10px;font-weight:700;pointer-events:none}
+@media(min-width:700px){.brand{font-size:17px}.stat{font-size:14px}#buildPanel{top:130px;bottom:18px;border-left:2px solid #a5c779;border-radius:18px;left:14px}#menuBtn{top:76px;left:16px}}
+</style>
+</head>
+<body>
+<div id="game">
+<canvas id="world"></canvas>
+<div class="topbar"><div class="brand">🌼 STACK THOSE FLOWERS</div><div class="stats"><div class="stat">👷 <span id="workerCount">0</span></div><div class="stat">🌸 <span id="flowerCount">0</span></div></div></div>
+<button id="menuBtn" aria-label="Open build menu">☰</button>
+<aside id="buildPanel"><h2>Build your garden</h2><p class="hint">Place worker houses around your flower field. Each house sends a helper to gather flowers and deliver them to the launcher.</p><button class="buildCard" id="houseButton"><span class="buildIcon">🏡</span><span>Worker House<span class="small">Cost: 10 flowers · adds 1 worker</span></span></button><p class="hint">Tip: Drag the world to explore. Pinch or use the + / − buttons to zoom.</p><button class="buildCard" id="cancelButton"><span class="buildIcon">✕</span><span>Cancel placement</span></button></aside>
+<div id="placeTip">TAP AN OPEN PATCH OF GRASS TO BUILD</div>
+<div id="help">DRAG TO EXPLORE · PINCH TO ZOOM</div>
+<div id="zoomControls"><button id="zoomIn">+</button><button id="zoomOut">−</button><button id="homeView">⌂</button></div>
+<div id="toast"></div>
+</div>
+<script>
+(()=>{
+'use strict';
+const canvas=document.getElementById('world'),ctx=canvas.getContext('2d');
+const W=2600,H=1900,center={x:W/2,y:H/2};
+let dpr=1,viewW=0,viewH=0,camera={x:center.x,y:center.y,zoom:.78},placing=false,menuOpen=false;
+let totalFlowers=0,workers=[],houses=[],flowers=[],particles=[],launched=[],last=performance.now(),toastTimer=0;
+const atlas=new Image();atlas.src='IMG_1369.jpeg';
+const pileAtlas=new Image();pileAtlas.src='IMG_1370.jpeg';
+let atlasReady=false;atlas.onload=()=>{atlasReady=true}; 
+function resize(){dpr=Math.min(devicePixelRatio||1,2);viewW=innerWidth;viewH=innerHeight;canvas.width=Math.round(viewW*dpr);canvas.height=Math.round(viewH*dpr);ctx.setTransform(dpr,0,0,dpr,0,0)}
+addEventListener('resize',resize);resize();
+const rand=(a,b)=>a+Math.random()*(b-a),dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+function toast(s){const e=document.getElementById('toast');e.textContent=s;e.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>e.classList.remove('show'),1800)}
+function worldToScreen(p){return{x:(p.x-camera.x)*camera.zoom+viewW/2,y:(p.y-camera.y)*camera.zoom+viewH/2}}
+function screenToWorld(x,y){return{x:(x-viewW/2)/camera.zoom+camera.x,y:(y-viewH/2)/camera.zoom+camera.y}}
+function clampCamera(){const halfW=viewW/(2*camera.zoom),halfH=viewH/(2*camera.zoom);camera.x=Math.max(halfW-120,Math.min(W-halfW+120,camera.x));camera.y=Math.max(halfH-120,Math.min(H-halfH+120,camera.y))}
+function seedWorld(){
+ flowers=[];const types=['daisy','tulip','sunflower','pink'];
+ for(let i=0;i<100;i++){let x=rand(150,W-150),y=rand(130,H-130);if(Math.hypot(x-center.x,y-center.y)<260)continue;flowers.push({x,y,type:types[i%types.length],phase:rand(0,6.2),state:'growing',respawn:0})}
+}
+seedWorld();
+const launcher={x:center.x,y:center.y,scale:1};
+function drawGround(){
+ ctx.fillStyle='#8fbd68';ctx.fillRect(0,0,W,H);
+ // soft mottled grass patches and path-like garden details
+ for(let i=0;i<330;i++){let x=(i*197)%W,y=(i*311)%H;ctx.fillStyle=i%3?'#7fb15e':'#a1ca74';ctx.globalAlpha=.22;ctx.beginPath();ctx.ellipse(x,y,rand(20,75),rand(12,40),rand(0,3),0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1;
+ // decorative world edges
+ ctx.strokeStyle='#477b4b';ctx.lineWidth=26;ctx.strokeRect(20,20,W-40,H-40);
+ for(let x=65;x<W-60;x+=115){drawBush(x,45);drawBush(x,H-45)}
+ for(let y=140;y<H-80;y+=130){drawBush(45,y);drawBush(W-45,y)}
+ // little stones and tufts
+ for(let i=0;i<110;i++){let x=(i*263+80)%W,y=(i*431+120)%H;if(Math.hypot(x-center.x,y-center.y)<240)continue;ctx.fillStyle=i%2?'#729b55':'#b0ca7a';ctx.beginPath();ctx.ellipse(x,y,5,2,rand(-1,1),0,7);ctx.fill()}
+}
+function drawBush(x,y){ctx.fillStyle='#4e8849';ctx.beginPath();ctx.arc(x,y,23,0,7);ctx.fill();ctx.fillStyle='#72a95a';ctx.beginPath();ctx.arc(x-7,y-7,12,0,7);ctx.fill()}
+function drawFlower(f){if(f.state==='picked')return;const sway=Math.sin(performance.now()/520+f.phase)*2;ctx.save();ctx.translate(f.x,f.y);ctx.translate(sway,0);if(atlasReady){const sx={daisy:18,tulip:440,sunflower:720,pink:910}[f.type];const sy=f.type==='daisy'?430:430;ctx.drawImage(atlas,sx,sy,65,90,-22,-43,44,58)}else{ctx.strokeStyle='#347b3c';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(0,18);ctx.lineTo(0,-10);ctx.stroke();ctx.fillStyle=f.type==='tulip'?'#d94c5d':f.type==='pink'?'#e87bb1':f.type==='sunflower'?'#f5b83e':'#fff';for(let i=0;i<7;i++){ctx.beginPath();ctx.arc(Math.cos(i*6.28/7)*9,-14+Math.sin(i*6.28/7)*9,6,0,7);ctx.fill()}ctx.fillStyle='#e6b944';ctx.beginPath();ctx.arc(0,-14,5,0,7);ctx.fill()}ctx.restore()}
+function drawHouse(h){ctx.save();ctx.translate(h.x,h.y);ctx.fillStyle='#385a39';ctx.beginPath();ctx.ellipse(0,16,35,13,0,0,7);ctx.fill();ctx.fillStyle='#d9b77a';ctx.fillRect(-25,-22,50,40);ctx.fillStyle='#a54e42';ctx.beginPath();ctx.moveTo(-33,-20);ctx.lineTo(0,-48);ctx.lineTo(33,-20);ctx.closePath();ctx.fill();ctx.fillStyle='#f1d89c';ctx.fillRect(-7,-7,14,25);ctx.fillStyle='#7eae9b';ctx.fillRect(-19,-14,10,11);ctx.fillRect(9,-14,10,11);ctx.restore()}
+function drawLauncher(){ctx.save();ctx.translate(launcher.x,launcher.y);ctx.fillStyle='#5b8247';ctx.beginPath();ctx.ellipse(0,50,125,48,0,0,7);ctx.fill();ctx.fillStyle='#7d5635';ctx.fillRect(-65,-24,130,74);ctx.fillStyle='#c88a4c';ctx.fillRect(-55,-44,110,25);ctx.fillStyle='#e6c078';ctx.beginPath();ctx.moveTo(-70,-43);ctx.lineTo(0,-100);ctx.lineTo(70,-43);ctx.closePath();ctx.fill();ctx.fillStyle='#395c40';ctx.fillRect(-31,-5,62,34);ctx.fillStyle='#f7d66e';ctx.beginPath();ctx.arc(0,-22,16,0,7);ctx.fill();ctx.fillStyle='#fff0b5';ctx.beginPath();ctx.arc(0,-22,8,0,7);ctx.fill();ctx.fillStyle='#6a452f';ctx.fillRect(58,-4,24,9);ctx.fillRect(76,-13,9,27);ctx.restore()}
+function drawPile(){const x=launcher.x+170,y=launcher.y+52;const n=Math.min(totalFlowers,80),levels=Math.max(1,Math.ceil(Math.sqrt(n)));ctx.save();ctx.translate(x,y);ctx.fillStyle='#527c43';ctx.beginPath();ctx.ellipse(0,25,105,27,0,0,7);ctx.fill();for(let i=0;i<n;i++){const row=Math.floor(i/levels),col=i%levels;const px=(col-(Math.min(levels,n-row*levels)-1)/2)*24,py=-row*12;const c=['#fff1e0','#ec6b91','#e84f5d','#f3b735'][i%4];ctx.fillStyle='#367747';ctx.fillRect(px-3,py+2,6,14);ctx.fillStyle=c;ctx.beginPath();ctx.arc(px,py,8,0,7);ctx.fill();ctx.fillStyle='#ffdf79';ctx.beginPath();ctx.arc(px,py,3,0,7);ctx.fill()}ctx.restore()}
+function drawWorker(w){ctx.save();ctx.translate(w.x,w.y);const bob=Math.sin(w.anim*10)*2;ctx.translate(0,bob);if(atlasReady){let sx=28+(Math.floor(w.anim*8)%6)*120,sy=28;ctx.drawImage(atlas,sx,sy,88,130,-22,-48,44,65)}else{ctx.fillStyle='#e8c18a';ctx.beginPath();ctx.arc(0,-29,11,0,7);ctx.fill();ctx.fillStyle='#4c83a0';ctx.fillRect(-12,-18,24,28);ctx.fillStyle='#76502e';ctx.beginPath();ctx.ellipse(0,-42,17,7,0,0,7);ctx.fill();ctx.strokeStyle='#f1d5ac';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-7,7);ctx.lineTo(-9,18);ctx.moveTo(7,7);ctx.lineTo(9,18);ctx.stroke()}if(w.carry){ctx.fillStyle=w.carry==='pink'?'#eb78b1':w.carry==='tulip'?'#df4e60':w.carry==='sunflower'?'#f4bb39':'#fff';ctx.beginPath();ctx.arc(20,-35,8,0,7);ctx.fill();ctx.fillStyle='#3f8a43';ctx.fillRect(19,-28,3,12)}ctx.restore()}
+function drawWorld(){
+ ctx.clearRect(0,0,viewW,viewH);ctx.save();ctx.translate(viewW/2,viewH/2);ctx.scale(camera.zoom,camera.zoom);ctx.translate(-camera.x,-camera.y);
+ drawGround();for(const f of flowers)drawFlower(f);for(const h of houses)drawHouse(h);drawLauncher();drawPile();
+ for(const p of particles){ctx.fillStyle=p.color;ctx.globalAlpha=Math.max(0,p.life);ctx.beginPath();ctx.arc(p.x,p.y,4,0,7);ctx.fill()}ctx.globalAlpha=1;
+ for(const w of workers)drawWorker(w);
+ if(placing){const p=screenToWorld(pointer.x,pointer.y);ctx.strokeStyle='#fff4a2';ctx.lineWidth=4/camera.zoom;ctx.setLineDash([8/camera.zoom,6/camera.zoom]);ctx.beginPath();ctx.arc(p.x,p.y,42,0,7);ctx.stroke();ctx.setLineDash([])}
+ ctx.restore();
+}
+function moveToward(obj,target,speed,dt){const dx=target.x-obj.x,dy=target.y-obj.y,d=Math.hypot(dx,dy);if(d<speed*dt+3){obj.x=target.x;obj.y=target.y;return true}obj.x+=dx/d*speed*dt;obj.y+=dy/d*speed*dt;obj.anim+=dt;return false}
+function update(dt){
+ for(const f of flowers){if(f.state==='picked'&&f.respawn>0){f.respawn-=dt;if(f.respawn<=0){f.state='growing';f.respawn=0}}}
+ for(const w of workers){
+  if(w.state==='idle'||w.state==='search'){const f=flowers.filter(f=>f.state==='growing').sort((a,b)=>dist(w,a)-dist(w,b))[0];if(f){w.target=f;w.state='toFlower'}}
+  if(w.state==='toFlower'&&w.target){if(moveToward(w,w.target,88,dt)){w.target.state='picked';w.target.respawn=8;w.carry=w.target.type;w.state='toLauncher';w.target=null}}
+  else if(w.state==='toLauncher'){if(moveToward(w,launcher,105,dt)){w.state='deposit';w.timer=.35}}
+  else if(w.state==='deposit'){w.timer-=dt;if(w.timer<=0){totalFlowers++;w.carry=null;w.state='search';launchFlower()}}
+ }
+ for(const p of particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt}particles=particles.filter(p=>p.life>0);
+ for(const l of launched){l.t+=dt}launched=launched.filter(l=>l.t<.7);
+ document.getElementById('workerCount').textContent=workers.length;document.getElementById('flowerCount').textContent=totalFlowers;
+}
+function launchFlower(){for(let i=0;i<10;i++)particles.push({x:launcher.x+rand(-20,20),y:launcher.y+rand(-20,15),vx:rand(60,180),vy:rand(-150,-40),life:rand(.4,.8),color:['#fff0d8','#ed6b9d','#e95360','#f4c14c'][i%4]});launched.push({t:0})}
+function frame(now){const dt=Math.min(.04,(now-last)/1000);last=now;update(dt);drawWorld();requestAnimationFrame(frame)}requestAnimationFrame(frame);
+let pointer={x:0,y:0},drag=null,pointers=new Map(),pinchStart=null;
+canvas.addEventListener('pointerdown',e=>{pointer={x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===2){const a=[...pointers.values()];pinchStart={distance:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y),zoom:camera.zoom};drag=null;return}drag={id:e.pointerId,x:e.clientX,y:e.clientY,cx:camera.x,cy:camera.y,moved:false}});
+canvas.addEventListener('pointermove',e=>{pointer={x:e.clientX,y:e.clientY};if(pointers.has(e.pointerId))pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===2&&pinchStart){const a=[...pointers.values()],d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);camera.zoom=Math.max(.38,Math.min(1.35,pinchStart.zoom*d/pinchStart.distance));clampCamera();return}if(drag&&drag.id===e.pointerId){const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.abs(dx)+Math.abs(dy)>5)drag.moved=true;camera.x=drag.cx-dx/camera.zoom;camera.y=drag.cy-dy/camera.zoom;clampCamera()}});
+canvas.addEventListener('pointerup',e=>{const p=screenToWorld(e.clientX,e.clientY);if(placing&&drag&&!drag.moved&&pointers.size===1){if(Math.hypot(p.x-launcher.x,p.y-launcher.y)<150||houses.some(h=>dist(h,p)<90)){toast('Choose an open patch of grass');}else if(totalFlowers<10){toast('You need 10 flowers to build a house');}else{totalFlowers-=10;houses.push({x:p.x,y:p.y});workers.push({x:p.x,y:p.y+35,state:'search',anim:0,carry:null});placing=false;document.getElementById('placeTip').classList.remove('show');toast('Worker house built! A helper is on the way 🌼')}}pointers.delete(e.pointerId);if(pointers.size<2)pinchStart=null;drag=null});
+canvas.addEventListener('pointercancel',e=>{pointers.delete(e.pointerId);drag=null;pinchStart=null});
+document.getElementById('menuBtn').onclick=()=>{menuOpen=!menuOpen;document.getElementById('buildPanel').classList.toggle('open',menuOpen)};
+document.getElementById('houseButton').onclick=()=>{placing=true;menuOpen=false;document.getElementById('buildPanel').classList.remove('open');document.getElementById('placeTip').classList.add('show');toast('Tap an open spot to place your house')};
+document.getElementById('cancelButton').onclick=()=>{placing=false;document.getElementById('placeTip').classList.remove('show')};
+function zoom(f){camera.zoom=Math.max(.38,Math.min(1.35,camera.zoom*f));clampCamera()}
+document.getElementById('zoomIn').onclick=()=>zoom(1.2);document.getElementById('zoomOut').onclick=()=>zoom(.83);document.getElementById('homeView').onclick=()=>{camera={x:center.x,y:center.y,zoom:.78}};
+})();
+</script>
+</body></html>
