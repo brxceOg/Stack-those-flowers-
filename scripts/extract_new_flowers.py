@@ -13,7 +13,7 @@ FRAME_DIR.mkdir(parents=True, exist_ok=True)
 # The new sheet is a 2-column by 3-row grid:
 # sunflower, daisy, red bouquet, bluebells, tulip, rose.
 NAMES = ("sunflower", "daisy", "red-bouquet", "bluebells", "tulip", "rose")
-FRAME = 128
+FRAME = 176
 
 def remove_magenta_background(image):
     rgba = np.asarray(image.convert("RGBA"), dtype=np.uint8).copy()
@@ -87,7 +87,7 @@ def main():
         raise RuntimeError(f"Unexpected flower sheet size {sheet.size}; expected 399x400")
     # Explicit boundaries keep all six illustrations inside their own cells.
     x_edges = (0, 199, 399)
-    y_edges = (0, 133, 266, 400)
+    y_edges = (0, 170, 300, 400)
     atlas = Image.new("RGBA", (FRAME*len(NAMES), FRAME), (0,0,0,0))
     for i, name in enumerate(NAMES):
         row, col = divmod(i, 2)
