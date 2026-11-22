@@ -13,7 +13,7 @@ Preserve both original files unchanged. All production sprite assets must be der
 
 ## Mandatory extraction and transparency standard
 - **Every isolated sprite must have a genuinely transparent alpha background. A white background is not acceptable.**
-- Remove the edge-connected magenta sheet background completely from the extracted worker sprite area, including magenta-contaminated antialiasing pixels. Do not leave white pixels, pale halos, white rectangles, or a matte around the sprite.
+- Remove the edge-connected pale sheet background completely from the new worker sprite sheets. Do not leave white pixels, pale halos, background rectangles, separator lines, or a matte around the sprite. Preserve enclosed cream/white artwork and highlights.
 - Preserve white pixels that are part of the artwork: flower petals, eye whites, shine, highlights, shirt details, and other intentional white markings. Background removal must be based on connected background regions / careful masks, not a global “turn every white pixel transparent” operation.
 - Inspect each extracted sprite against both a dark checkerboard and a contrasting solid background. Any leftover white fringe, stray background pixels, holes in the artwork, or clipped details must be corrected before the asset is accepted.
 - Keep the cartoon outline faithful. Remove magenta contamination without introducing color spill; do not blur, feather, or erode the sprite silhouette.
@@ -23,9 +23,9 @@ Preserve both original files unchanged. All production sprite assets must be der
 - Validate the exported PNGs by checking their alpha channel and compositing previews over dark and colored backgrounds. A white-looking petal must remain white while the surrounding sheet background is transparent.
 
 ## Worker
-- Use the supplied cartoon worker from IMG_1375.jpeg. Preserve its original yellow character palette, rounded silhouette, and dark outlines; do not substitute the previous pixel-art farmer.
-- Use the walk cycle for ordinary travel. The supplied run strip repeats only two unique poses (A/B/A/B), so running states use the four distinct walk-cycle frames at a faster cadence with a stronger body bounce; this prevents the visible two-pose stutter while preserving the faster run movement speed.
-- Use the two dedicated crouching/reaching poses when collecting a flower, with the separate idle pose when a worker is waiting.
+- Use `IMG_1390.jpeg` as the replacement base-worker sheet. Its 4×4 layout is cut into individual poses by foreground-component isolation inside each cell, removing the pale sheet background and edge-touching separator rules while retaining enclosed light details and the original dark outlines.
+- Row one supplies the four-frame walk cycle; row two supplies the four-frame run cycle; row three supplies idle, two pickup poses, and the arms-forward toss/hold pose; row four supplies the four-frame carrying cycle. Preserve the new witch outfit and original palette.
+- Keep every extracted pose on a consistent transparent 192×192 canvas, scale uniformly, and align the feet to a shared baseline.
 - Carry a clearly visible flower while returning to the launcher.\n- On arrival within launcher range, hold the flower in the normal carrying pose for a brief 0.3-second wind-up. Switch to the dedicated `IMG_1379.jpeg` raised-arm toss pose at the exact moment the flower is released, then animate the flower arcing into the launcher before depositing it. The toss artwork is exported tightly cropped with transparent background and drawn by visible-art height (60 world pixels), so transparent canvas padding cannot make it appear smaller than the other worker animations.
 - Keep the worker's feet aligned to a stable ground baseline across every frame.
 - Never stretch individual frames to fit; preserve original aspect ratio.
@@ -77,7 +77,7 @@ Preserve both original files unchanged. All production sprite assets must be der
 
 
 ## Dye maker asset direction
-- `IMG_1388.jpeg` is the replacement dye maker character sheet. Each of its 22 poses is individually isolated using a dedicated hand-traced silhouette polygon in `index.html`; do not substitute rectangular crop windows, row inference, or connected-component detection. Each polygon clips only its own character artwork, then alpha bounds are trimmed and the cutouts are packed into a fresh transparent 10-column × 3-row atlas with consistent scale, feet baseline, and 20px gutters. The first 10 poses form the empty-handed run cycle; row three supplies standing idle and crouching pickup; the six bottom-row poses form the carrying run cycle. Keep the original JPEG unchanged.
+- `IMG_1391.jpeg` is the replacement Dye Maker character sheet. It uses a 4×4 layout. Isolate each pose independently with foreground-component and edge-connected background separation inside its own cell; discard separator lines that touch the cell edges, preserve enclosed light artwork, and alpha-trim before packing into a transparent 4×4 atlas. The first two rows supply the eight-frame run cycle, row three supplies idle and pickup/interaction poses, and row four supplies the four-frame carrying cycle. Keep the original JPEG unchanged.
 - `IMG_1384.jpeg` is the dye tent sheet. Its upper row supplies the tent's resting/entrance states and its lower row supplies the brewing animation. Keep the original sheet intact and crop frames at draw time. Align the bottom of the tent artwork with its contact shadow so the tent visibly rests on the ground.
 - `IMG_1386.jpeg` is the dye-vat sheet with eight horizontal bottle frames. Remove the magenta key only. Do not erase dark pixels by row or strip: the dark bottle outlines extend into the lowest source rows and must remain intact. Crop the full 84-pixel frame height so each bottle's bottom edge is visible.
 - Dye maker tents are animated production buildings. The dye maker runs between the tent and the visible flower pile, carries one flower, physically enters the tent, and remains hidden throughout the 4.5-second brew before emerging. Keep the tent in front of the entering/exiting character for natural occlusion; preserve the physical vat spawn.
