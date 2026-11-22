@@ -74,4 +74,4 @@ A standalone, mobile-first idle gathering game for iPhone Safari, hosted as a Gi
 - A Dye Maker Tent costs 35 flowers and must be placed inside a planned housing section, following the existing building placement rules.
 - Each tent has one dedicated dye maker. The maker waits until a flower is visibly available in the flower pile, runs to collect it, carries it back to the tent, and starts a 4.5-second brewing cycle.
 - When brewing finishes, the tent spits a physical dye-vat item out from its entrance. Dye vats remain in the world and are saved with the existing V3 save data; the dye tent positions are also saved. Existing V2/V3 saves without these fields migrate to empty dye-tent and dye-vat arrays.
-- The dye-vat sprite sheet is keyed at runtime: magenta is transparent, and only the narrow black bottom strip is removed. The bottle outlines remain opaque.
+- The dye-vat sprite sheet is keyed at runtime using magenta transparency only. Preserve all dark bottle-outline pixels, including the lowest rows, and crop each of the eight horizontal frames at its full 84-pixel height.
