@@ -303,8 +303,8 @@ function drawWorker(w){
  // is composited onto character pixels only, never the garden behind them.
  let spriteCtx=ctx,spriteCanvas=null;
  if(boosted){
-  if(!drawWorker.boostCanvas){drawWorker.boostCanvas=document.createElement('canvas');drawWorker.boostCanvas.width=96;drawWorker.boostCanvas.height=96;drawWorker.boostCtx=drawWorker.boostCanvas.getContext('2d')}
-  spriteCanvas=drawWorker.boostCanvas;spriteCtx=drawWorker.boostCtx;spriteCtx.clearRect(0,0,96,96);spriteCtx.save();spriteCtx.translate(48,48);
+  if(!drawWorker.boostCanvas){drawWorker.boostCanvas=document.createElement('canvas');drawWorker.boostCanvas.width=128;drawWorker.boostCanvas.height=128;drawWorker.boostCtx=drawWorker.boostCanvas.getContext('2d')}
+  spriteCanvas=drawWorker.boostCanvas;spriteCtx=drawWorker.boostCtx;spriteCtx.clearRect(0,0,128,128);spriteCtx.save();spriteCtx.translate(64,64);
  }
  if(w.state==='tossing'){
   // Toss art is stored in a wider 256x192 canvas so its raised-arm pose
@@ -320,13 +320,13 @@ function drawWorker(w){
   // A bright diagonal highlight sweeps across the worker on a repeating cycle.
   // source-atop confines the gold tint and shine band to the opaque sprite pixels.
   const shinePhase=(campfireClock*0.72+(w.x+w.y)*0.002)%1.7;
-  const shineX=-48+shinePhase*150;
+  const shineX=-64+shinePhase*180;
   spriteCtx.save();spriteCtx.globalCompositeOperation='source-atop';
-  spriteCtx.fillStyle='rgba(255,190,76,.17)';spriteCtx.fillRect(0,0,96,96);
+  spriteCtx.fillStyle='rgba(255,190,76,.17)';spriteCtx.fillRect(0,0,128,128);
   const shine=spriteCtx.createLinearGradient(shineX-20,0,shineX+20,0);
   shine.addColorStop(0,'rgba(255,255,255,0)');shine.addColorStop(.38,'rgba(255,238,183,.08)');shine.addColorStop(.5,'rgba(255,255,226,.82)');shine.addColorStop(.62,'rgba(255,226,157,.2)');shine.addColorStop(1,'rgba(255,255,255,0)');
-  spriteCtx.translate(48,48);spriteCtx.rotate(-.28);spriteCtx.fillStyle=shine;spriteCtx.fillRect(-70,-68,140,136);spriteCtx.restore();
-  ctx.drawImage(spriteCanvas,-48,-48);
+  spriteCtx.translate(64,64);spriteCtx.rotate(-.28);spriteCtx.fillStyle=shine;spriteCtx.fillRect(-82,-82,164,164);spriteCtx.restore();
+  ctx.drawImage(spriteCanvas,-64,-64);
  }
  // Keep the picked flower visibly nestled in the worker's hands throughout
  // the carrying walk/run and stationary launcher wind-up poses.
