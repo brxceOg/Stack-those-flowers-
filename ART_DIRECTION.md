@@ -74,3 +74,10 @@ Preserve both original files unchanged. All production sprite assets must be der
 - Tapping a placed worker house or campfire opens a compact contextual action menu immediately beside it. The menu reserves disabled upgrade slots for future upgrades and includes the structure's sell action; selling still requires explicit confirmation.
 
 - The contextual upgrade menu is category-wide, not per-building: Worker House upgrades apply to every Worker House, and Campfire upgrades apply to every Campfire. Selecting any one structure opens the available upgrade list for its category; future purchases will affect all structures of that type.
+
+
+## Dye maker asset direction
+- `IMG_1383.jpeg` is the dye maker character sheet. The magenta key is removed in the runtime sprite preparation canvas; the running character is cropped from its four-frame run row and rendered at a consistent character scale.
+- `IMG_1384.jpeg` is the dye tent sheet. Its upper row supplies the tent's resting/entrance states and its lower row supplies the brewing animation. Keep the original sheet intact and crop frames at draw time.
+- `IMG_1386.jpeg` is the dye-vat sheet with eight horizontal bottle frames. Remove the magenta key and the narrow black strip along the bottom edge only; preserve dark bottle outlines and cap details.
+- Dye maker tents are animated production buildings. The dye maker runs between the tent and the visible flower pile, carries one flower, then the tent brews before physically spitting out a dye vat.
