@@ -635,6 +635,8 @@ function drawWorker(w){
   }
   spriteCtx.restore();ctx.drawImage(spriteCanvas,-64,-64);
  }
+ // Keep the consumed vat visible as a held prop throughout the drink sequence.
+ if(drinking&&w.drinkVat)drawHeldDyeVat(w.drinkVat,characterSize);
  // Use the same hand-relative flower placement and dimensions as Dye Makers.
  if(w.carry&&(w.state==='toLauncher'||w.state==='preToss')){
   drawHeldFlower(characterSize,characterSize,w.carry);
@@ -682,6 +684,22 @@ function assignFlower(w){
  // Reserve synchronously at selection time so another worker cannot claim it.
  target.reservedBy=w.id;w.target=target;w.state='toFlower';return true;
 }
+ function drawHeldDyeVat(v,characterSize){
+  if(!dyeVatCanvas||!v)return;
+  const frameW=dyeVatCanvas.width/8,frame=Math.max(0,Math.min(7,Math.floor(Number(v.type)||0)));
+  const bounds=getDyeVatFrameBounds(),b=bounds&&bounds[frame]||{x:0,y:0,w:frameW,h:dyeVatCanvas.height};
+  const sx=Math.round(frame*frameW)+b.x,sw=Math.min(Math.ceil(b.w),dyeVatCanvas.width-sx),sh=b.h;
+  if(sw<=0||sh<=0)return;
+  const scale=Math.min(19/sw,21/sh),dw=sw*scale,dh=sh*scale;
+  // Draw the bottle over the raised hand so the worker visibly grips the same
+  // isolated vat artwork used in the world, with its complete outline intact.
+  ctx.save();ctx.translate(characterSize*.12,-characterSize*.68);
+  ctx.rotate(-.12+Math.sin(wDrinkMotion(v))*0.035);
+  ctx.imageSmoothingEnabled=true;
+  ctx.drawImage(dyeVatCanvas,sx,b.y,sw,sh,-dw*.48,-dh*.72,dw,dh);
+  ctx.restore();
+ }
+ function wDrinkMotion(v){return Math.sin(campfireClock*5.7+(Number(v.type)||0)) }
  function drawHeldFlower(characterWidth,characterHeight,type){
   if(!type||!atlasReady)return;
   const flowerSX=FLOWER_SOURCE_X[type]??FLOWER_SOURCE_X.daisy;
