@@ -115,49 +115,63 @@ function extractGridPoseCanvases(img){
  for(let row=0;row<4;row++)for(let col=0;col<4;col++){
   const x0=Math.round(col*cellW),y0=Math.round(row*cellH),x1=Math.round((col+1)*cellW),y1=Math.round((row+1)*cellH);
   const w=x1-x0,h=y1-y0,im=sc.getImageData(x0,y0,w,h),d=im.data,n=w*h;
-  const candidate=new Uint8Array(n),kept=new Uint8Array(n),seen=new Uint8Array(n),stack=new Int32Array(n);
-  // Saturated character colors and dark outline pixels are foreground.
-  // Pale low-contrast paper and neutral separator rules are not.
+  // Estimate the pale paper matte from the perimeter of this cell. Using
+  // its actual edge color handles the pink/white JPEG background and its
+  // compression noise without treating white details inside the character
+  // as background.
+  const edge=[];
+  for(let x=0;x<w;x++){edge.push((x)*4,( (h-1)*w+x)*4)}
+  for(let y=1;y<h-1;y++){edge.push((y*w)*4,(y*w+w-1)*4)}
+  const med=k=>{const v=edge.map(p=>d[p+k]).sort((a,b)=>a-b);return v[v.length>>1]};
+  const bgR=med(0),bgG=med(1),bgB=med(2);
+  const bgLike=new Uint8Array(n),background=new Uint8Array(n),stack=new Int32Array(n);
   for(let i=0;i<n;i++){
-   const p=i*4,r=d[p],g=d[p+1],b=d[p+2],hi=Math.max(r,g,b),lo=Math.min(r,g,b),sat=hi?((hi-lo)/hi):0,lum=(r+g+b)/3;
-   if(sat>.17||lum<188)candidate[i]=1;
+   const p=i*4,r=d[p],g=d[p+1],b=d[p+2],hi=Math.max(r,g,b),lo=Math.min(r,g,b),lum=(r+g+b)/3;
+   const distance=Math.hypot(r-bgR,g-bgG,b-bgB);
+   const paleNeutral=lum>176&&(hi-lo)<62;
+   bgLike[i]=(lum>150&&(distance<58||paleNeutral))?1:0;
   }
-  // Keep only components fully inside the cell. Full-width scan/divider
-  // marks touch a cell edge and are therefore rejected, not packed as art.
-  for(let seed=0;seed<n;seed++){
-   if(!candidate[seed]||seen[seed])continue;
-   let top=0,bottom=0,minX=w,minY=h,maxX=-1,maxY=-1,area=0,touches=false;
-   stack[bottom++]=seed;seen[seed]=1;
-   while(top<bottom){
-    const p=stack[top++],px=p%w,py=(p/w)|0;area++;
-    if(px<minX)minX=px;if(px>maxX)maxX=px;if(py<minY)minY=py;if(py>maxY)maxY=py;
-    if(px===0||py===0||px===w-1||py===h-1)touches=true;
-    for(let yy=Math.max(0,py-1);yy<=Math.min(h-1,py+1);yy++)for(let xx=Math.max(0,px-1);xx<=Math.min(w-1,px+1);xx++){
-     const q=yy*w+xx;if(candidate[q]&&!seen[q]){seen[q]=1;stack[bottom++]=q}
-    }
-   }
-   const componentW=maxX-minX+1,componentH=maxY-minY+1;
-   const isSeparator=(componentW>w*.6&&componentH<10)||(componentH>h*.6&&componentW<10);
-   if(!isSeparator&&area>=8)for(let k=0;k<bottom;k++)kept[stack[k]]=1;
-  }
-  // Flood the non-foreground pixels from the cell perimeter. This makes
-  // paper transparent while preserving enclosed light details inside the
-  // character (including white/cream highlights).
-  const bg=new Uint8Array(n);let head=0,tail=0;
-  const push=(p)=>{if(!kept[p]&&!bg[p]){bg[p]=1;stack[tail++]=p}};
-  for(let x=0;x<w;x++){push(x);push((h-1)*w+x)}
-  for(let y=0;y<h;y++){push(y*w);push(y*w+w-1)}
+  // Flood only matte-colored pixels connected to this cell's perimeter.
+  // Enclosed cream/white pixels stay opaque because the outline seals them.
+  let head=0,tail=0;
+  const seed=p=>{if(bgLike[p]&&!background[p]){background[p]=1;stack[tail++]=p}};
+  for(let x=0;x<w;x++){seed(x);seed((h-1)*w+x)}
+  for(let y=0;y<h;y++){seed(y*w);seed(y*w+w-1)}
   while(head<tail){
    const p=stack[head++],px=p%w,py=(p/w)|0;
-   for(let yy=Math.max(0,py-1);yy<=Math.min(h-1,py+1);yy++)for(let xx=Math.max(0,px-1);xx<=Math.min(w-1,px+1);xx++)push(yy*w+xx);
+   for(let yy=Math.max(0,py-1);yy<=Math.min(h-1,py+1);yy++)for(let xx=Math.max(0,px-1);xx<=Math.min(w-1,px+1);xx++){
+    const q=yy*w+xx;if(bgLike[q]&&!background[q]){background[q]=1;stack[tail++]=q}
+   }
   }
-  let l=w,t=h,r=-1,b=-1;
-  for(let y=0;y<h;y++)for(let x=0;x<w;x++){const p=y*w+x;if(!bg[p]){if(x<l)l=x;if(x>r)r=x;if(y<t)t=y;if(y>b)b=y}else d[p*4+3]=0}
-  if(r<l||b<t)throw new Error('No isolated character found in sheet cell '+row+','+col);
-  // Tight cutout plus a four-pixel antialias safety margin.
-  l=Math.max(0,l-4);t=Math.max(0,t-4);r=Math.min(w-1,r+4);b=Math.min(h-1,b+4);
-  const cut=document.createElement('canvas');cut.width=r-l+1;cut.height=b-t+1;
-  const ci=cut.getContext('2d');const out=ci.createImageData(cut.width,cut.height);
+  // Find foreground components after matte removal. Thin divider fragments
+  // touching a cell edge are discarded as rules, never packed as character.
+  const seen=new Uint8Array(n),keep=new Uint8Array(n);
+  for(let seedAt=0;seedAt<n;seedAt++){
+   if(background[seedAt]||seen[seedAt])continue;
+   let top=0,bottom=0,minX=w,minY=h,maxX=-1,maxY=-1,area=0,touches=false;
+   stack[bottom++]=seedAt;seen[seedAt]=1;
+   while(top<bottom){
+    const p=stack[top++],px=p%w,py=(p/w)|0;area++;
+    minX=Math.min(minX,px);maxX=Math.max(maxX,px);minY=Math.min(minY,py);maxY=Math.max(maxY,py);
+    if(px===0||py===0||px===w-1||py===h-1)touches=true;
+    for(let yy=Math.max(0,py-1);yy<=Math.min(h-1,py+1);yy++)for(let xx=Math.max(0,px-1);xx<=Math.min(w-1,px+1);xx++){
+     const q=yy*w+xx;if(!background[q]&&!seen[q]){seen[q]=1;stack[bottom++]=q}
+    }
+   }
+   const cw=maxX-minX+1,ch=maxY-minY+1;
+   const separator=touches&&((cw>w*.58&&ch<=12)||(ch>h*.58&&cw<=12));
+   if(!separator&&area>=4)for(let k=0;k<bottom;k++)keep[stack[k]]=1;
+  }
+  let l=w,t=h,rr=-1,bb=-1;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+   const p=y*w+x;if(!keep[p])d[p*4+3]=0;
+   else{l=Math.min(l,x);rr=Math.max(rr,x);t=Math.min(t,y);bb=Math.max(bb,y)}
+  }
+  if(rr<l||bb<t)throw new Error('No isolated character found in sheet cell '+row+','+col);
+  // Tight transparent cutout with a small safety margin; preserve source pixels.
+  l=Math.max(0,l-3);t=Math.max(0,t-3);rr=Math.min(w-1,rr+3);bb=Math.min(h-1,bb+3);
+  const cut=document.createElement('canvas');cut.width=rr-l+1;cut.height=bb-t+1;
+  const ci=cut.getContext('2d'),out=ci.createImageData(cut.width,cut.height);
   for(let yy=0;yy<cut.height;yy++)for(let xx=0;xx<cut.width;xx++){
    const from=((yy+t)*w+(xx+l))*4,to=(yy*cut.width+xx)*4;
    out.data[to]=d[from];out.data[to+1]=d[from+1];out.data[to+2]=d[from+2];out.data[to+3]=d[from+3];
@@ -489,17 +503,15 @@ function drawWorker(w){
  // Use only individually isolated frames from the new source sheet.
  if(!sheet.complete||!sheet.naturalWidth){ctx.restore();return}
  const FRAME_W=192,FRAME_H=192;
- // The supplied run strip repeats the same two poses twice (A/B/A/B), so
- // use the four distinct locomotion frames from the walk strip while the
- // worker is in a running state. The faster cadence and stronger bob make
- // this read as a run without visibly stuttering between duplicate poses.
+ // Run and walk use their own four-frame cycles. A consistent cadence
+ // avoids abrupt pose changes and keeps the run from looking like a sped-up walk.
  const poseSheet=sheet;
  const count=Math.max(1,Math.floor(poseSheet.naturalWidth/FRAME_W));
  // The picking sheet now contains only two crouch/grab poses.
  // Give each pose a clear, even hold; never advance into a walk frame.
  const pickFrame=picking?(w.anim<.8?0:1):0;
- const frame=picking?pickFrame:(moving?(Math.floor(w.anim*(running?12:7))%count):0);
- const bob=moving?Math.sin(w.anim*(running?18:10))*(running?2:1.2):0;
+ const frame=picking?pickFrame:(moving?(Math.floor(w.anim*(running?9:7.5))%count):0);
+ const bob=moving?Math.sin(w.anim*(running?Math.PI*2*2.25:Math.PI*2*1.6))*(running?1.15:.7):0;
  ctx.translate(0,bob);
  ctx.imageSmoothingEnabled=true;
  // Render each worker at a larger 76×76 world size. Keep the square source
@@ -587,11 +599,11 @@ function assignFlower(w){
   if(w.state==='inside'||!dyeMakerAtlas)return;
   const running=w.state==='toPile'||w.state==='toTent'||w.state==='exitingTent';
   const movingFrames=running&&w.carry&&dyeMakerCarryFrames.length?dyeMakerCarryFrames:dyeMakerRunFrames;
-  const frame=running?movingFrames[Math.floor(w.anim*10)%movingFrames.length]:w.state==='pickingPile'?dyeMakerPickFrames[Math.floor(w.anim*3)%dyeMakerPickFrames.length]:dyeMakerIdleFrame;
+  const frame=running?movingFrames[Math.floor(w.anim*8)%movingFrames.length]:w.state==='pickingPile'?dyeMakerPickFrames[Math.floor(w.anim*2.5)%dyeMakerPickFrames.length]:dyeMakerIdleFrame;
   if(!frame||!frame.w||!frame.h)return;
   const scale=Math.min(82/frame.w,76/frame.h),dw=frame.w*scale,dh=frame.h*scale;
   ctx.save();ctx.translate(w.x,w.y);if((w.facing||1)<0)ctx.scale(-1,1);
-  ctx.imageSmoothingEnabled=true;
+  ctx.imageSmoothingEnabled=false;
   ctx.drawImage(dyeMakerAtlas,frame.x,frame.y,frame.w,frame.h,-dw/2,-dh,dw,dh);
   if(w.carry){ctx.fillStyle='#d94b8b';ctx.beginPath();ctx.arc(17,-Math.max(20,dh*.52),4,0,Math.PI*2);ctx.fill()}
   ctx.restore();
