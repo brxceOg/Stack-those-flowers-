@@ -103,16 +103,18 @@ const pileAtlas=new Image();pileAtlas.src='assets/flower-pile-atlas.png';
 let workerWalk=new Image(),workerRun=new Image(),workerPick=new Image(),workerCarry=new Image(),workerCarryIdle=new Image(),workerIdle=new Image(),workerToss=new Image();
 const baseWorkerSheet=new Image();baseWorkerSheet.src='IMG_1393.jpeg?v=final-base-worker-sheet-1393';
 const dyeMakerSheet=new Image();dyeMakerSheet.src='IMG_1394.jpeg?v=final-witch-dye-maker-sheet-1394';
+const workerDrinkSheet=new Image();workerDrinkSheet.src='IMG_1395.jpeg?v=drinking-sequence-1395';
+let workerDrinkWalk=null,workerDrinkSequence=null;
 const dyeTentSheet=new Image();dyeTentSheet.src='IMG_1384.jpeg';
 const dyeVatSheet=new Image();dyeVatSheet.src='IMG_1386.jpeg';
 let dyeMakerCanvas=null,dyeTentCanvas=null,dyeVatCanvas=null;
 let dyeMakerRunFrames=[],dyeMakerCarryFrames=[],dyeMakerIdleFrame=null,dyeMakerPickFrame=null,dyeMakerPickFrames=[],dyeMakerCarryIdleFrame=null;
 function setCanvasImage(image,canvas){image.onload=null;image.src=canvas.toDataURL('image/png')}
-function extractGridPoseCanvases(img){
+function extractGridPoseCanvases(img,rows=4){
  const source=document.createElement('canvas');source.width=img.naturalWidth;source.height=img.naturalHeight;
  const sc=source.getContext('2d',{willReadFrequently:true});sc.drawImage(img,0,0);
- const sw=source.width,sh=source.height,cellW=sw/4,cellH=sh/4,frames=[];
- for(let row=0;row<4;row++)for(let col=0;col<4;col++){
+ const sw=source.width,sh=source.height,cellW=sw/4,cellH=sh/rows,frames=[];
+ for(let row=0;row<rows;row++)for(let col=0;col<4;col++){
   const x0=Math.round(col*cellW),y0=Math.round(row*cellH),x1=Math.round((col+1)*cellW),y1=Math.round((row+1)*cellH);
   const w=x1-x0,h=y1-y0,im=sc.getImageData(x0,y0,w,h),d=im.data,n=w*h;
   // Estimate the pale paper matte from the perimeter of this cell. Using
@@ -223,6 +225,14 @@ baseWorkerSheet.onload=()=>{
 };
 let dyeMakerAtlas=null,dyeMakerFrameMeta=[];
 function keyMagentaSheet(img){const cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;const cx=cv.getContext('2d',{willReadFrequently:true});cx.drawImage(img,0,0);const im=cx.getImageData(0,0,cv.width,cv.height),d=im.data;for(let y=0;y<cv.height;y++)for(let x=0;x<cv.width;x++){const i=(y*cv.width+x)*4,r=d[i],g=d[i+1],b=d[i+2];if(r>175&&b>145&&g<90&&r-g>75&&b-g>65)d[i+3]=0;}cx.putImageData(im,0,0);return cv}
+workerDrinkSheet.onload=()=>{
+ // IMG_1395 is a 4×2 sheet: the upper row is the approach/run cycle,
+ // and the lower row is the four-step pick-up-and-drink sequence.
+ const poses=extractGridPoseCanvases(workerDrinkSheet,2);
+ const scale=sharedPoseScale(poses);
+ workerDrinkWalk=packPoseStrip(poses.slice(0,4),scale);
+ workerDrinkSequence=packPoseStrip(poses.slice(4,8),scale);
+};
 dyeMakerSheet.onload=()=>{
  const poses=extractGridPoseCanvases(dyeMakerSheet),packed=packDyeMakerAtlas(poses);
  dyeMakerAtlas=packed.atlas;dyeMakerFrameMeta=packed.meta;
@@ -357,7 +367,7 @@ function loadGame(){try{const data=JSON.parse(localStorage.getItem(SAVE_KEY)||'n
  dyeTents=Array.isArray(data.dyeTents)?data.dyeTents.filter(t=>Number.isFinite(t.x)&&Number.isFinite(t.y)).map(t=>({...snapStructurePoint(t),brewing:!!t.brewing,brewTimer:Math.max(0,Number(t.brewTimer)||0),brewAnim:Math.max(0,Number(t.brewAnim)||0)})):[];
  dyeVats=Array.isArray(data.dyeVats)?data.dyeVats.filter(v=>Number.isFinite(v.x)&&Number.isFinite(v.y)).map(v=>({...v,type:Math.max(0,Math.min(7,Math.floor(Number(v.type)||0)))})):[];
  dyeMakers=dyeTents.map(t=>({id:nextDyeMakerId++,tent:t,x:t.x,y:t.y+(t.brewing?42:48),state:t.brewing?'inside':'idle',anim:0,carry:false}));
- workers=houses.map(h=>({id:nextWorkerId++,houseX:h.x,houseY:h.y,x:h.x,y:h.y+35,state:'search',anim:0,carry:null,target:null,pickingFlower:null}));saveGame();}catch(e){}}
+ workers=houses.map(h=>({id:nextWorkerId++,houseX:h.x,houseY:h.y,x:h.x,y:h.y+35,state:'search',anim:0,carry:null,target:null,pickingFlower:null,dyeBuffTimer:0,drinkVat:null}));saveGame();}catch(e){}}
 function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({version:3,flowers:totalFlowers,delivered:totalDelivered,workerRunUpgradeLevel,houses,campfires,dyeTents,dyeVats,sections}));}catch(e){}}
 loadGame();relocateFlowersFromPlannedAreas();addEventListener('pagehide',saveGame);
 const launcher={x:center.x,y:center.y,scale:1};
@@ -426,6 +436,11 @@ function isWorkerBoosted(w){
  const towerX=Number.isFinite(w.houseX)?w.houseX:w.x;
  const towerY=Number.isFinite(w.houseY)?w.houseY:w.y;
  return campfires.some(c=>Math.hypot(c.x-towerX,c.y-towerY)<=CAMPFIRE_RANGE);
+}
+function dyeBuffMultiplier(w){return (w.dyeBuffTimer||0)>0?1.3:1}
+function emitRainbowBurst(x,y){
+ const colors=['#ff5478','#ffad45','#ffe75a','#65d98a','#59b9ff','#b77aff'];
+ for(let i=0;i<18;i++){const a=Math.PI*2*i/18,s=rand(45,105);particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-24,life:rand(.55,1),color:colors[i%colors.length]})}
 }
 function drawCampfire(c){ctx.save();ctx.translate(c.x,c.y);
  // Small, soft amber light pool that flickers gently with the fire animation.
@@ -537,12 +552,12 @@ function drawPile(){
 const CHARACTER_DISPLAY_SCALE=.85; // Shared display-only reduction for every character type.
 function drawWorker(w){
  ctx.save();ctx.translate(w.x,w.y);
- const boosted=isWorkerBoosted(w);
+ const boosted=isWorkerBoosted(w),dyeBuffed=(w.dyeBuffTimer||0)>0;
  ctx.scale(w.facing===-1?-1:1,1);
- const picking=w.state==='picking';
- const moving=w.state==='toFlower'||w.state==='toLauncher';
- const running=w.state==='toLauncher'||(w.state==='toFlower'&&w.target&&dist(w,w.target)>300);
- const sheet=w.state==='tossing'?(workerToss.complete&&workerToss.naturalWidth?workerToss:workerCarry):(picking?workerPick:(w.state==='preToss'&&w.carry?workerCarryIdle:(w.state==='toLauncher'&&w.carry?workerCarry:(running?workerRun:(moving?workerWalk:workerIdle)))));
+ const picking=w.state==='picking',drinking=w.state==='drinking',toDyeVat=w.state==='toDyeVat';
+ const moving=w.state==='toFlower'||w.state==='toLauncher'||toDyeVat;
+ const running=w.state==='toLauncher'||toDyeVat||(w.state==='toFlower'&&w.target&&dist(w,w.target)>300);
+ const sheet=drinking?(workerDrinkSequence||workerIdle):(toDyeVat?(workerDrinkWalk||workerRun):(w.state==='tossing'?(workerToss.complete&&workerToss.naturalWidth?workerToss:workerCarry):(picking?workerPick:(w.state==='preToss'&&w.carry?workerCarryIdle:(w.state==='toLauncher'&&w.carry?workerCarry:(running?workerRun:(moving?workerWalk:workerIdle))))));
  // Use only individually isolated frames from the new source sheet.
  if(!sheet.complete||!sheet.naturalWidth){ctx.restore();return}
  const FRAME_W=192,FRAME_H=192;
@@ -553,7 +568,7 @@ function drawWorker(w){
  // The picking sheet now contains only two crouch/grab poses.
  // Give each pose a clear, even hold; never advance into a walk frame.
  const pickFrame=picking?(w.anim<.8?0:1):0;
- const frame=picking?pickFrame:(moving?(Math.floor(w.anim*(running?9:7.5))%count):0);
+ const frame=drinking?Math.min(count-1,Math.floor(w.anim*1.25)):(picking?pickFrame:(moving?(Math.floor(w.anim*(running?9:7.5))%count):0));
  const bob=moving?Math.sin(w.anim*(running?Math.PI*2*2.25:Math.PI*2*1.6))*(running?1.15:.7):0;
  ctx.translate(0,bob);
  ctx.imageSmoothingEnabled=true;
@@ -561,28 +576,34 @@ function drawWorker(w){
  // frame proportional and anchor its feet to the shared ground baseline.
  // Draw boosted workers to a transparent offscreen layer so the animated shine
  // is composited onto character pixels only, never the garden behind them.
+ const specialGlow=boosted||dyeBuffed;
  let spriteCtx=ctx,spriteCanvas=null;
- if(boosted){
+ if(specialGlow){
   if(!drawWorker.boostCanvas){drawWorker.boostCanvas=document.createElement('canvas');drawWorker.boostCanvas.width=128;drawWorker.boostCanvas.height=128;drawWorker.boostCtx=drawWorker.boostCanvas.getContext('2d')}
   spriteCanvas=drawWorker.boostCanvas;spriteCtx=drawWorker.boostCtx;spriteCtx.clearRect(0,0,128,128);spriteCtx.save();spriteCtx.translate(64,64);
  }
- // All worker poses, including the throw charge-up/toss pose, use the
- // same complete 192×192 frame cell and the same proportional display box.
- // This avoids a special-case draw size that could crop or distort one pose.
+ // Every animation uses the same complete 192×192 frame and display scale.
  const characterSize=76*CHARACTER_DISPLAY_SCALE;
  spriteCtx.drawImage(poseSheet,frame*FRAME_W,0,FRAME_W,FRAME_H,-characterSize/2,-characterSize,characterSize,characterSize);
- if(boosted){
-  spriteCtx.restore();
-  // A bright diagonal highlight sweeps across the worker on a repeating cycle.
-  // source-atop confines the gold tint and shine band to the opaque sprite pixels.
-  const shinePhase=(campfireClock*0.72+(w.x+w.y)*0.002)%1.7;
-  const shineX=-64+shinePhase*180;
-  spriteCtx.save();spriteCtx.globalCompositeOperation='source-atop';
-  spriteCtx.fillStyle='rgba(255,190,76,.17)';spriteCtx.fillRect(0,0,128,128);
-  const shine=spriteCtx.createLinearGradient(shineX-20,0,shineX+20,0);
-  shine.addColorStop(0,'rgba(255,255,255,0)');shine.addColorStop(.38,'rgba(255,238,183,.08)');shine.addColorStop(.5,'rgba(255,255,226,.82)');shine.addColorStop(.62,'rgba(255,226,157,.2)');shine.addColorStop(1,'rgba(255,255,255,0)');
-  spriteCtx.translate(64,64);spriteCtx.rotate(-.28);spriteCtx.fillStyle=shine;spriteCtx.fillRect(-82,-82,164,164);spriteCtx.restore();
-  ctx.drawImage(spriteCanvas,-64,-64);
+ if(specialGlow){
+  spriteCtx.restore();spriteCtx.save();spriteCtx.globalCompositeOperation='source-atop';
+  if(boosted){
+   spriteCtx.fillStyle='rgba(255,190,76,.17)';spriteCtx.fillRect(0,0,128,128);
+   const shinePhase=(campfireClock*0.72+(w.x+w.y)*0.002)%1.7,shineX=-64+shinePhase*180;
+   const shine=spriteCtx.createLinearGradient(shineX-20,0,shineX+20,0);
+   shine.addColorStop(0,'rgba(255,255,255,0)');shine.addColorStop(.38,'rgba(255,238,183,.08)');shine.addColorStop(.5,'rgba(255,255,226,.82)');shine.addColorStop(.62,'rgba(255,226,157,.2)');shine.addColorStop(1,'rgba(255,255,255,0)');
+   spriteCtx.save();spriteCtx.translate(64,64);spriteCtx.rotate(-.28);spriteCtx.fillStyle=shine;spriteCtx.fillRect(-82,-82,164,164);spriteCtx.restore();
+  }
+  if(dyeBuffed){
+   const rainbow=spriteCtx.createLinearGradient(8,4,120,124);
+   rainbow.addColorStop(0,'rgba(255,65,115,.48)');rainbow.addColorStop(.2,'rgba(255,165,55,.42)');rainbow.addColorStop(.4,'rgba(255,239,75,.40)');rainbow.addColorStop(.6,'rgba(65,220,125,.42)');rainbow.addColorStop(.8,'rgba(65,155,255,.45)');rainbow.addColorStop(1,'rgba(190,90,255,.48)');
+   spriteCtx.globalAlpha=.72;spriteCtx.fillStyle=rainbow;spriteCtx.fillRect(0,0,128,128);spriteCtx.globalAlpha=1;
+   const sweepX=((campfireClock*58+(w.x+w.y)*.12)%210)-42;
+   const sweep=spriteCtx.createLinearGradient(sweepX-18,0,sweepX+18,0);
+   sweep.addColorStop(0,'rgba(255,255,255,0)');sweep.addColorStop(.42,'rgba(255,255,255,.12)');sweep.addColorStop(.5,'rgba(255,255,255,.92)');sweep.addColorStop(.58,'rgba(255,255,255,.16)');sweep.addColorStop(1,'rgba(255,255,255,0)');
+   spriteCtx.save();spriteCtx.translate(64,64);spriteCtx.rotate(-.28);spriteCtx.fillStyle=sweep;spriteCtx.fillRect(-82,-82,164,164);spriteCtx.restore();
+  }
+  spriteCtx.restore();ctx.drawImage(spriteCanvas,-64,-64);
  }
  // Use the same hand-relative flower placement and dimensions as Dye Makers.
  if(w.carry&&(w.state==='toLauncher'||w.state==='preToss')){
@@ -670,12 +691,30 @@ function assignFlower(w){
  saveClock+=dt;if(saveClock>=2.5){saveClock=0;saveGame()}
  for(const f of flowers){if(f.state==='picked'&&f.respawn>0){f.respawn-=dt;if(f.respawn<=0){f.state='growing';f.respawn=0;delete f.reservedBy}}}
  for(const w of workers){
+  if(w.dyeBuffTimer>0)w.dyeBuffTimer=Math.max(0,w.dyeBuffTimer-dt);
+  if((w.state==='idle'||w.state==='search')&&dyeVats.length&&Math.random()<.0012*dt){
+   const claimed=workers.filter(other=>other!==w&&other.drinkVat).map(other=>other.drinkVat);
+   const vat=dyeVats.filter(v=>!claimed.includes(v)).sort((a,b)=>dist(w,a)-dist(w,b))[0];
+   if(vat){w.drinkVat=vat;w.state='toDyeVat';w.target={x:vat.x,y:vat.y+16};w.anim=0}
+  }
+  if(w.state==='toDyeVat'){
+   if(!w.drinkVat||!dyeVats.includes(w.drinkVat)){w.drinkVat=null;w.target=null;w.state='search';w.anim=0}
+   else if(moveToward(w,w.target,132*(isWorkerBoosted(w)?CAMPFIRE_BOOST:1)*dyeBuffMultiplier(w),dt)){
+    const vatIndex=dyeVats.indexOf(w.drinkVat);if(vatIndex>=0)dyeVats.splice(vatIndex,1);
+    w.state='drinking';w.target=null;w.anim=0;w.timer=3.2;saveGame();
+   }
+  }
+  else if(w.state==='drinking'){
+   w.anim+=dt;w.timer-=dt;
+   if(w.timer<=0){w.drinkVat=null;w.dyeBuffTimer=90;w.state='search';w.anim=0;emitRainbowBurst(w.x,w.y-34);saveGame()}
+  }
+  else {
   if(w.state==='idle'||w.state==='search')assignFlower(w);
   if(w.state==='toFlower'){
    if(!w.target||w.target.state!=='growing'||w.target.reservedBy!==w.id){releaseFlowerReservation(w);w.state='search';continue}
-   if(moveToward(w,w.target,88*(isWorkerBoosted(w)?CAMPFIRE_BOOST:1)*(dist(w,w.target)>300?workerRunSpeedMultiplier():1),dt)){
+   if(moveToward(w,w.target,88*(isWorkerBoosted(w)?CAMPFIRE_BOOST:1)*dyeBuffMultiplier(w)*(dist(w,w.target)>300?workerRunSpeedMultiplier():1),dt)){
     // Keep the flower growing and visible for the entire two-pose pick action.
-    w.pickingFlower=w.target;w.pickType=w.target.type;w.target=null;w.state='picking';w.timer=1.6/(isWorkerBoosted(w)?CAMPFIRE_BOOST:1);w.anim=0;
+    w.pickingFlower=w.target;w.pickType=w.target.type;w.target=null;w.state='picking';w.timer=1.6/((isWorkerBoosted(w)?CAMPFIRE_BOOST:1)*dyeBuffMultiplier(w));w.anim=0;
    }
   }
   else if(w.state==='picking'){
@@ -692,7 +731,7 @@ function assignFlower(w){
   }
   else if(w.state==='toLauncher'){
     if(dist(w,launcher)<125){w.state='preToss';w.timer=.3;w.anim=0}
-    else moveToward(w,launcher,105*(isWorkerBoosted(w)?CAMPFIRE_BOOST:1)*workerRunSpeedMultiplier(),dt);
+    else moveToward(w,launcher,105*(isWorkerBoosted(w)?CAMPFIRE_BOOST:1)*dyeBuffMultiplier(w)*workerRunSpeedMultiplier(),dt);
    }
    else if(w.state==='preToss'){
     // Keep the carrying pose during the wind-up; the toss pose begins exactly
@@ -705,8 +744,9 @@ function assignFlower(w){
    }
    else if(w.state==='tossing'){
     w.anim+=dt;w.timer-=dt;
-    if(w.timer<=0){totalFlowers++;totalDelivered++;const deliveredType=w.carry||'daisy';w.carry=null;w.state='search';launchFlower(deliveredType)}
+    if(w.timer<=0){const deliveredType=w.carry||'daisy',bonus=(w.dyeBuffTimer>0&&Math.random()<.2)?1:0;totalFlowers+=1+bonus;totalDelivered+=1+bonus;w.carry=null;w.state='search';launchFlower(deliveredType);if(bonus)launchFlower(deliveredType)}
    }
+ }
  }
  for(const v of dyeVats)v.age=(v.age||0)+dt;
  for(const p of particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt}particles=particles.filter(p=>p.life>0);
@@ -722,7 +762,7 @@ canvas.addEventListener('pointermove',e=>{pointer={x:e.clientX,y:e.clientY};if(p
 canvas.addEventListener('pointerup',e=>{const raw=screenToWorld(e.clientX,e.clientY);if(planningHousing&&drag&&drag.planning&&selectionStart){selectionCurrent=cellIndexAtWorld(raw);const r=cellRect(selectionStart,selectionCurrent),inside=r.x>=0&&r.y>=0&&(r.x+r.w)*BUILD_GRID<=W&&(r.y+r.h)*BUILD_GRID<=H,overlaps=sections.some(z=>r.x<z.x+z.w&&r.x+r.w>z.x&&r.y<z.y+z.h&&r.y+r.h>z.y);if(r.w<1||r.h<1)toast('Housing sections must be at least 1 × 1 tile');else if(!inside)toast('Keep the planned area inside the garden');else if(overlaps)toast('That area overlaps an existing planned section');else{sections.push({category:'housing',x:r.x,y:r.y,w:r.w,h:r.h});mergeAdjacentHousingAreas();relocateFlowersFromPlannedAreas();saveGame();planningHousing=false;document.getElementById('placeTip').classList.remove('show','planning');toast('Housing area planned! 🟦')}selectionStart=null;selectionCurrent=null}
 else if(selling&&drag&&!drag.moved&&pointers.size===1){const house=houses.find(h=>Math.abs(raw.x-h.x)<=56&&raw.y>=h.y-106&&raw.y<=h.y+8),fire=campfires.find(c=>Math.abs(raw.x-c.x)<=56&&raw.y>=c.y-106&&raw.y<=c.y+8);if(house){selectedStructure={type:'house',ref:house};showSaleConfirmation('house',house,5)}else if(fire){selectedStructure={type:'campfire',ref:fire};showSaleConfirmation('campfire',fire,Math.floor(CAMPFIRE_COST/2))}else toast('Tap a worker house or campfire to select it')}
 else if(removingSection&&drag&&!drag.moved&&pointers.size===1){const c=cellIndexAtWorld(raw),index=sections.findIndex(z=>sectionContainsCell(z,c.x,c.y));if(index<0)toast('Tap inside a blue planned area to remove it');else{const z=sections[index],occupied=houses.some(h=>{const hc=cellIndexAtWorld(h);return sectionContainsCell(z,hc.x,hc.y)})||campfires.some(c=>{const cc=cellIndexAtWorld(c);return sectionContainsCell(z,cc.x,cc.y)});if(occupied)toast('Remove all structures in this area first');else{sections.splice(index,1);saveGame();removingSection=false;document.getElementById('placeTip').classList.remove('show','removing');toast('Planned area removed')}}}
-else if(placing&&drag&&!drag.moved&&pointers.size===1){const p=snapStructurePoint(raw);if(p.x<BUILD_GRID/2||p.y<BUILD_GRID/2||p.x>W-BUILD_GRID/2||p.y>H-BUILD_GRID/2||!housingSectionAt(p))toast('Structures can only be built in a blue housing section');else if(Math.hypot(p.x-launcher.x,p.y-launcher.y)<150||houses.some(h=>dist(h,p)<BUILD_GRID)||campfires.some(c=>dist(c,p)<BUILD_GRID)||dyeTents.some(t=>dist(t,p)<BUILD_GRID))toast('Choose an open grid square');else if(placing==='campfire'){if(totalFlowers<CAMPFIRE_COST)toast('You need 25 flowers to build a campfire');else{totalFlowers-=CAMPFIRE_COST;campfires.push({x:p.x,y:p.y});saveGame();placing=false;document.getElementById('placeTip').classList.remove('show');toast('Campfire built! Nearby workers are boosted 🔥')}}else if(placing==='tent'){if(totalFlowers<35)toast('You need 35 flowers to build a Dye Maker Tent');else{totalFlowers-=35;const tent={x:p.x,y:p.y,brewing:false,brewTimer:0,brewAnim:0};dyeTents.push(tent);dyeMakers.push({id:nextDyeMakerId++,tent,x:p.x,y:p.y+48,state:'idle',anim:0,carry:false,target:null});saveGame();placing=false;document.getElementById('placeTip').classList.remove('show');toast('Dye Maker Tent built! A maker will collect flowers 🧪')}}else if(totalFlowers<10)toast('You need 10 flowers to build a house');else{totalFlowers-=10;houses.push({x:p.x,y:p.y});workers.push({id:nextWorkerId++,houseX:p.x,houseY:p.y,x:p.x,y:p.y+35,state:'search',anim:0,carry:null,target:null,pickingFlower:null});saveGame();placing=false;document.getElementById('placeTip').classList.remove('show');toast('Worker house built! A helper is on the way 🌼')}}else if(!planningHousing&&!removingSection&&!selling&&!placing&&drag&&!drag.moved&&pointers.size===1){const hit=findStructureAt(raw);if(hit)openStructureMenu(hit.type,hit.ref,e.clientX,e.clientY);else{hideStructureMenu();selectedStructure=null}}pointers.delete(e.pointerId);if(pointers.size<2)pinchStart=null;drag=null});
+else if(placing&&drag&&!drag.moved&&pointers.size===1){const p=snapStructurePoint(raw);if(p.x<BUILD_GRID/2||p.y<BUILD_GRID/2||p.x>W-BUILD_GRID/2||p.y>H-BUILD_GRID/2||!housingSectionAt(p))toast('Structures can only be built in a blue housing section');else if(Math.hypot(p.x-launcher.x,p.y-launcher.y)<150||houses.some(h=>dist(h,p)<BUILD_GRID)||campfires.some(c=>dist(c,p)<BUILD_GRID)||dyeTents.some(t=>dist(t,p)<BUILD_GRID))toast('Choose an open grid square');else if(placing==='campfire'){if(totalFlowers<CAMPFIRE_COST)toast('You need 25 flowers to build a campfire');else{totalFlowers-=CAMPFIRE_COST;campfires.push({x:p.x,y:p.y});saveGame();placing=false;document.getElementById('placeTip').classList.remove('show');toast('Campfire built! Nearby workers are boosted 🔥')}}else if(placing==='tent'){if(totalFlowers<35)toast('You need 35 flowers to build a Dye Maker Tent');else{totalFlowers-=35;const tent={x:p.x,y:p.y,brewing:false,brewTimer:0,brewAnim:0};dyeTents.push(tent);dyeMakers.push({id:nextDyeMakerId++,tent,x:p.x,y:p.y+48,state:'idle',anim:0,carry:false,target:null});saveGame();placing=false;document.getElementById('placeTip').classList.remove('show');toast('Dye Maker Tent built! A maker will collect flowers 🧪')}}else if(totalFlowers<10)toast('You need 10 flowers to build a house');else{totalFlowers-=10;houses.push({x:p.x,y:p.y});workers.push({id:nextWorkerId++,houseX:p.x,houseY:p.y,x:p.x,y:p.y+35,state:'search',anim:0,carry:null,target:null,pickingFlower:null,dyeBuffTimer:0,drinkVat:null});saveGame();placing=false;document.getElementById('placeTip').classList.remove('show');toast('Worker house built! A helper is on the way 🌼')}}else if(!planningHousing&&!removingSection&&!selling&&!placing&&drag&&!drag.moved&&pointers.size===1){const hit=findStructureAt(raw);if(hit)openStructureMenu(hit.type,hit.ref,e.clientX,e.clientY);else{hideStructureMenu();selectedStructure=null}}pointers.delete(e.pointerId);if(pointers.size<2)pinchStart=null;drag=null});
 canvas.addEventListener('pointercancel',e=>{pointers.delete(e.pointerId);drag=null;pinchStart=null;selectionStart=null;selectionCurrent=null});
 document.getElementById('menuBtn').onclick=()=>{menuOpen=!menuOpen;document.getElementById('buildPanel').classList.toggle('open',menuOpen)};
 document.getElementById('planHousingButton').onclick=()=>{planningHousing=true;placing=false;removingSection=false;selling=false;selectedStructure=null;selectionStart=null;selectionCurrent=null;menuOpen=false;document.getElementById('buildPanel').classList.remove('open');const tip=document.getElementById('placeTip');tip.textContent='DRAG A BLUE HOUSING AREA · MINIMUM 1 × 1 TILE';tip.classList.remove('removing');tip.classList.add('planning','show');toast('Drag across at least 1 × 1 grid tile')};
