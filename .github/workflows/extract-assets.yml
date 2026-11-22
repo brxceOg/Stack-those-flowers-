@@ -27,7 +27,7 @@ jobs:
         run: python -m pip install --upgrade Pillow numpy
       - name: Remove connected white sheet background
         run: python scripts/extract_transparency.py
-      - name: Extract worker walk, run, and flower-pick animations
+      - name: Extract isolated cartoon worker animations
         run: python scripts/extract_worker_sheet.py
       - name: Commit generated transparent PNG atlases
         run: |
