@@ -61,3 +61,5 @@ Preserve both original files unchanged. All production sprite assets must be der
 - A sprite sheet is not considered complete until every frame has been visually inspected at native scale and against contrasting backgrounds, with its transparent background verified.
 
 - Campfires cast a subtle, warm amber circular glow with a small local radius (58 world units). Its brightness flickers gently with the fire animation; it is a visual light effect only and does not change the 320-unit worker boost radius.
+
+- Workers currently receiving a campfire boost get a subtle, warm golden aura and a tiny intermittent glint behind their sprite. The indicator follows the worker and uses the same assigned-house distance check as the actual boost; unboosted workers receive no effect.
