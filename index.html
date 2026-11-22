@@ -142,7 +142,13 @@ function drawWorker(w){
  ctx.imageSmoothingEnabled=true;
  // Render the square source frame at a smaller 58×58 world size; matching
  // source and destination aspect ratios keeps the cartoon artwork crisp and undistorted.
- ctx.drawImage(sheet,frame*FRAME_W,0,FRAME_W,FRAME_H,-29,-58,58,58);
+ if(w.state==='tossing'){
+  // Toss art is stored in a wider 256x192 canvas so its raised-arm pose
+  // can match the other animations' 58px character height without distortion.
+  ctx.drawImage(sheet,0,0,sheet.naturalWidth,sheet.naturalHeight,-38.5,-58,77,58);
+ }else{
+  ctx.drawImage(sheet,frame*FRAME_W,0,FRAME_W,FRAME_H,-29,-58,58,58);
+ }
  ctx.restore()
 }
 function drawWorld(){
