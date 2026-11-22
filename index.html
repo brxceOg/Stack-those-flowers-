@@ -90,14 +90,14 @@ function drawBush(x,y){ctx.fillStyle='#4e8849';ctx.beginPath();ctx.arc(x,y,23,0,
 function drawFlower(f){if(f.state==='picked')return;const sway=Math.sin(performance.now()/520+f.phase)*2;ctx.save();ctx.translate(f.x,f.y);ctx.translate(sway,0);if(atlasReady){const sx={daisy:0,tulip:65,sunflower:130,pink:195}[f.type];ctx.drawImage(atlas,sx,0,65,90,-22,-43,44,58)}else{ctx.strokeStyle='#347b3c';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(0,18);ctx.lineTo(0,-10);ctx.stroke();ctx.fillStyle=f.type==='tulip'?'#d94c5d':f.type==='pink'?'#e87bb1':f.type==='sunflower'?'#f5b83e':'#fff';for(let i=0;i<7;i++){ctx.beginPath();ctx.arc(Math.cos(i*6.28/7)*9,-14+Math.sin(i*6.28/7)*9,6,0,7);ctx.fill()}ctx.fillStyle='#e6b944';ctx.beginPath();ctx.arc(0,-14,5,0,7);ctx.fill()}ctx.restore()}
 function drawHouse(h){ctx.save();ctx.translate(h.x,h.y);ctx.fillStyle='#385a39';ctx.beginPath();ctx.ellipse(0,16,35,13,0,0,7);ctx.fill();ctx.fillStyle='#d9b77a';ctx.fillRect(-25,-22,50,40);ctx.fillStyle='#a54e42';ctx.beginPath();ctx.moveTo(-33,-20);ctx.lineTo(0,-48);ctx.lineTo(33,-20);ctx.closePath();ctx.fill();ctx.fillStyle='#f1d89c';ctx.fillRect(-7,-7,14,25);ctx.fillStyle='#7eae9b';ctx.fillRect(-19,-14,10,11);ctx.fillRect(9,-14,10,11);ctx.restore()}
 const launcherAnim={state:'idle',time:0,queued:0};
-const LAUNCHER_FRAME_W=224,LAUNCHER_FRAME_H=168;
+const LAUNCHER_FRAME_W=224,LAUNCHER_FRAME_H=150;
 function drawLauncher(){
  const sheet=launcherAnim.state==='collection'?launcherCollection:(launcherAnim.state==='charge'?launcherCharge:(launcherAnim.state==='fire'?launcherFire:null));
  if(sheet&&sheet.complete&&sheet.naturalWidth>=LAUNCHER_FRAME_W*3){
   const duration=launcherAnim.state==='charge'?.24:(launcherAnim.state==='fire'?.18:.2);
   const frame=Math.min(2,Math.floor(launcherAnim.time/duration));
   ctx.save();ctx.translate(launcher.x,launcher.y);ctx.imageSmoothingEnabled=true;
-  ctx.drawImage(sheet,frame*LAUNCHER_FRAME_W,0,LAUNCHER_FRAME_W,LAUNCHER_FRAME_H,-112,-118,224,168);
+  ctx.drawImage(sheet,frame*LAUNCHER_FRAME_W,0,LAUNCHER_FRAME_W,LAUNCHER_FRAME_H,-112,-100,224,150);
   ctx.restore();return;
  }
  // Brief loading fallback only; the extracted 3-stage artwork replaces this once loaded.
