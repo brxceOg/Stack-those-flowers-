@@ -97,102 +97,116 @@ const FLOWER_SOURCE_X={sunflower:0,daisy:224,'red-bouquet':448,bluebells:672,tul
 const FLOWER_TYPES=Object.keys(FLOWER_SOURCE_X);
 const FLOWER_FRAME=224;
 const pileAtlas=new Image();pileAtlas.src='assets/flower-pile-atlas.png';
-const workerWalk=new Image();workerWalk.src='assets/worker-walk.png?v=walk-feet-clearance-1122';
-const workerRun=new Image();workerRun.src='assets/worker-run.png?v=matte-unmix-1122-0723';
-const workerPick=new Image();workerPick.src='assets/worker-pick.png?v=matte-unmix-1122-0723';
-const workerCarry=new Image();workerCarry.src='assets/worker-carry.png?v=matte-unmix-1122-0723';
-const workerCarryIdle=new Image();workerCarryIdle.src='assets/worker-carry-idle.png?v=matte-unmix-1122-0723';
-const workerIdle=new Image();workerIdle.src='assets/worker-idle.png?v=matte-unmix-1122-0723';
-const workerToss=new Image();workerToss.src='assets/worker-toss.png?v=matte-unmix-1122-0723';
- const dyeMakerSheet=new Image();dyeMakerSheet.src='IMG_1388.jpeg?v=dye-maker-new-sheet-1122';
- const dyeTentSheet=new Image();dyeTentSheet.src='IMG_1384.jpeg';
- const dyeVatSheet=new Image();dyeVatSheet.src='IMG_1386.jpeg';
- let dyeMakerCanvas=null,dyeTentCanvas=null,dyeVatCanvas=null;
- let dyeMakerRunFrames=[],dyeMakerCarryFrames=[],dyeMakerIdleFrame=null,dyeMakerPickFrame=null;
- function keyMagentaSheet(img){const cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;const cx=cv.getContext('2d',{willReadFrequently:true});cx.drawImage(img,0,0);const im=cx.getImageData(0,0,cv.width,cv.height),d=im.data;for(let y=0;y<cv.height;y++)for(let x=0;x<cv.width;x++){const i=(y*cv.width+x)*4,r=d[i],g=d[i+1],b=d[i+2];if(r>175&&b>145&&g<90&&r-g>75&&b-g>65)d[i+3]=0;}cx.putImageData(im,0,0);return cv}
- // Each pose has its own hand-defined source window. These are individual
- // cutout instructions, not an inferred row/cell layout: each window contains
- // exactly one character pose and is processed independently before assembly.
- // Coordinates are authored against the 1380 x 690 reference and scaled to
- // the source image's native dimensions.
- let dyeMakerAtlas=null,dyeMakerFrameMeta=[];
- // Hand-traced silhouette polygons for each individual pose in IMG_1388.jpeg.
- // Coordinates follow the visible outer contour, not rectangular frame guesses.
- const dyeMakerPoseMasks=[
- // Top row: four empty-handed run poses.
- [[69,139],[73,119],[86,102],[104,94],[117,76],[106,61],[74,72],[70,53],[89,35],[111,8],[133,6],[153,16],[177,28],[193,37],[189,48],[167,53],[157,71],[154,96],[163,120],[181,143],[190,151],[185,164],[173,164],[154,145],[142,126],[126,135],[107,149],[88,158],[78,184],[63,187],[74,164],[78,149]],
- [[463,143],[468,121],[482,104],[498,94],[509,74],[497,61],[468,69],[458,53],[477,34],[500,7],[522,6],[542,15],[565,28],[580,37],[576,48],[553,54],[545,73],[546,98],[556,119],[571,142],[577,151],[571,162],[557,163],[540,145],[526,127],[508,138],[492,150],[478,159],[468,184],[452,187],[463,163],[470,148]],
- [[821,140],[825,121],[841,103],[858,95],[873,77],[861,61],[830,71],[820,54],[840,35],[861,8],[884,6],[905,16],[927,28],[944,37],[939,48],[917,54],[908,72],[908,97],[919,120],[936,143],[945,152],[938,164],[924,164],[906,145],[891,126],[873,137],[854,151],[839,159],[827,184],[811,187],[821,163],[828,148]],
- [[1207,140],[1212,121],[1227,104],[1244,95],[1259,77],[1247,61],[1217,71],[1207,54],[1227,35],[1249,8],[1271,6],[1292,16],[1314,28],[1330,37],[1326,48],[1304,54],[1295,72],[1295,97],[1306,120],[1323,143],[1332,152],[1325,164],[1311,164],[1293,145],[1278,126],[1260,137],[1241,151],[1226,159],[1214,184],[1198,187],[1208,163],[1215,148]],
- // Second row: six running poses.
- [[71,328],[76,305],[91,286],[111,275],[121,255],[109,239],[79,250],[71,232],[91,211],[115,190],[139,193],[161,204],[184,215],[214,225],[218,238],[204,245],[188,248],[181,267],[186,286],[201,306],[218,327],[222,341],[211,349],[197,344],[177,326],[160,307],[142,319],[123,337],[105,344],[87,334],[67,337]],
- [[270,328],[276,306],[291,286],[310,275],[321,255],[309,239],[279,250],[271,232],[291,211],[315,190],[339,193],[361,204],[384,215],[411,225],[416,238],[402,245],[386,248],[379,267],[384,286],[399,306],[416,327],[420,341],[409,349],[395,344],[375,326],[358,307],[340,319],[321,337],[303,344],[285,334],[266,337]],
- [[458,328],[464,306],[479,286],[499,275],[509,255],[497,239],[467,250],[459,232],[479,211],[503,190],[527,193],[549,204],[572,215],[599,225],[604,238],[590,245],[574,248],[567,267],[572,286],[587,306],[604,327],[608,341],[597,349],[583,344],[563,326],[546,307],[528,319],[509,337],[491,344],[473,334],[454,337]],
- [[805,328],[811,306],[826,286],[846,275],[856,255],[844,239],[814,250],[806,232],[826,211],[850,190],[874,193],[896,204],[919,215],[946,225],[951,238],[937,245],[921,248],[914,267],[919,286],[934,306],[951,327],[955,341],[944,349],[930,344],[910,326],[893,307],[875,319],[856,337],[838,344],[820,334],[801,337]],
- [[1014,328],[1020,306],[1035,286],[1055,275],[1065,255],[1053,239],[1023,250],[1015,232],[1035,211],[1059,190],[1083,193],[1105,204],[1128,215],[1155,225],[1160,238],[1146,245],[1130,248],[1123,267],[1128,286],[1143,306],[1160,327],[1164,341],[1153,349],[1139,344],[1119,326],[1102,307],[1084,319],[1065,337],[1047,344],[1029,334],[1010,337]],
- [[1203,328],[1209,306],[1224,286],[1244,275],[1254,255],[1242,239],[1212,250],[1204,232],[1224,211],[1248,190],[1272,193],[1294,204],[1317,215],[1344,225],[1349,238],[1335,245],[1319,248],[1312,267],[1317,286],[1332,306],[1349,327],[1353,341],[1342,349],[1328,344],[1308,326],[1291,307],[1273,319],[1254,337],[1236,344],[1218,334],[1199,337]],
- // Third row: standing, crouching/reaching, standing and presenting.
- [[90,540],[92,514],[95,487],[96,457],[91,436],[76,423],[72,410],[83,394],[103,383],[128,386],[149,399],[170,411],[190,420],[188,434],[174,440],[158,441],[153,464],[154,493],[157,523],[161,545],[151,556],[133,555],[121,542],[117,514],[111,490],[105,515],[104,544],[94,553],[83,547]],
- [[278,540],[281,514],[284,487],[285,457],[280,436],[265,423],[261,410],[272,394],[292,383],[317,386],[338,399],[359,411],[379,420],[377,434],[363,440],[347,441],[342,464],[343,493],[346,523],[350,545],[340,556],[322,555],[310,542],[306,514],[300,490],[294,515],[293,544],[283,553],[272,547]],
- [[466,541],[473,516],[488,495],[505,477],[510,454],[498,435],[483,420],[489,403],[510,390],[536,390],[559,402],[580,416],[604,430],[610,444],[601,454],[585,449],[571,438],[554,453],[537,468],[520,481],[536,498],[558,516],[579,535],[591,546],[584,558],[568,554],[548,541],[528,527],[509,514],[492,531],[482,554],[468,560],[459,550]],
- [[790,541],[797,516],[812,495],[829,477],[834,454],[822,435],[807,420],[813,403],[834,390],[860,390],[883,402],[904,416],[928,430],[934,444],[925,454],[909,449],[895,438],[878,453],[861,468],[844,481],[860,498],[882,516],[903,535],[915,546],[908,558],[892,554],[872,541],[852,527],[833,514],[816,531],[806,554],[792,560],[783,550]],
- [[1018,541],[1020,514],[1023,487],[1024,457],[1019,436],[1004,423],[1000,410],[1011,394],[1031,383],[1056,386],[1077,399],[1098,411],[1118,420],[1116,434],[1102,440],[1086,441],[1081,464],[1082,493],[1085,523],[1089,545],[1079,556],[1061,555],[1049,542],[1045,514],[1039,490],[1033,515],[1032,544],[1022,553],[1011,547]],
- [[1197,541],[1201,516],[1214,493],[1231,475],[1242,455],[1234,435],[1219,421],[1225,404],[1246,391],[1272,391],[1295,402],[1316,416],[1339,430],[1350,443],[1342,455],[1327,455],[1312,446],[1295,461],[1281,477],[1298,491],[1321,502],[1344,510],[1355,522],[1348,534],[1332,531],[1310,520],[1289,508],[1272,525],[1257,546],[1241,555],[1224,547],[1210,552],[1195,550]],
- // Bottom row: six carrying poses.
- [[70,684],[74,659],[88,640],[104,627],[111,608],[99,593],[70,603],[64,585],[84,565],[108,558],[132,561],[154,573],[177,584],[199,595],[204,608],[190,616],[174,615],[168,635],[176,655],[192,675],[198,688],[182,690],[164,679],[145,660],[128,670],[110,682],[91,688]],
- [[267,684],[270,659],[275,632],[279,607],[275,589],[261,578],[258,564],[275,557],[300,559],[323,571],[345,584],[367,596],[390,607],[395,620],[382,627],[365,620],[350,611],[334,627],[320,646],[325,665],[332,686],[316,690],[301,675],[294,650],[287,675],[282,690],[268,690]],
- [[461,684],[466,660],[480,640],[497,627],[504,608],[492,593],[463,603],[457,585],[477,565],[501,558],[525,561],[547,573],[570,584],[592,595],[598,608],[584,616],[568,615],[562,635],[570,655],[586,675],[592,688],[576,690],[558,679],[539,660],[522,670],[504,682],[482,688]],
- [[795,684],[800,659],[814,640],[830,627],[837,608],[825,593],[796,603],[790,585],[810,565],[834,558],[858,561],[880,573],[903,584],[925,595],[931,608],[917,616],[901,615],[895,635],[903,655],[919,675],[925,688],[909,690],[891,679],[872,660],[855,670],[837,682],[816,688]],
- [[1013,684],[1016,659],[1019,632],[1023,607],[1019,589],[1005,578],[1002,564],[1019,557],[1044,559],[1067,571],[1089,584],[1111,596],[1134,607],[1139,620],[1126,627],[1109,620],[1094,611],[1078,627],[1064,646],[1069,665],[1076,686],[1060,690],[1045,675],[1038,650],[1031,675],[1027,690],[1013,690]],
- [[1196,684],[1200,659],[1214,640],[1231,627],[1238,608],[1226,593],[1197,603],[1191,585],[1211,565],[1235,558],[1259,561],[1281,573],[1304,584],[1326,595],[1332,608],[1318,616],[1302,615],[1296,635],[1304,655],[1320,675],[1326,688],[1310,690],[1292,679],[1273,660],[1256,670],[1238,682],[1217,688]]
- ];
- function extractDyeMakerSprites(){
-  const sourceW=dyeMakerCanvas.width,sourceH=dyeMakerCanvas.height;
-  const sx=sourceW/1380,sy=sourceH/690;
-  const isolated=dyeMakerPoseMasks.map((outline,index)=>{
-   const pts=outline.map(([x,y])=>[x*sx,y*sy]);
-   const minX=Math.max(0,Math.floor(Math.min(...pts.map(p=>p[0])))-2);
-   const minY=Math.max(0,Math.floor(Math.min(...pts.map(p=>p[1])))-2);
-   const maxX=Math.min(sourceW,Math.ceil(Math.max(...pts.map(p=>p[0])))+3);
-   const maxY=Math.min(sourceH,Math.ceil(Math.max(...pts.map(p=>p[1])))+3);
-   const crop=document.createElement('canvas');crop.width=maxX-minX;crop.height=maxY-minY;
-   const cc=crop.getContext('2d');
-   cc.save();cc.beginPath();
-   pts.forEach(([x,y],i)=>i?cc.lineTo(x-minX,y-minY):cc.moveTo(x-minX,y-minY));
-   cc.closePath();cc.clip();
-   cc.drawImage(dyeMakerCanvas,minX,minY,crop.width,crop.height,0,0,crop.width,crop.height);
-   cc.restore();
-   const pixels=cc.getImageData(0,0,crop.width,crop.height).data;
-   let l=crop.width,t=crop.height,r=-1,b=-1;
-   for(let y=0;y<crop.height;y++)for(let x=0;x<crop.width;x++)if(pixels[(y*crop.width+x)*4+3]>12){if(x<l)l=x;if(x>r)r=x;if(y<t)t=y;if(y>b)b=y}
-   if(r<l||b<t)throw new Error('Hand-cut dye maker pose '+index+' is empty; check its trace.');
-   const trimmed=document.createElement('canvas');trimmed.width=r-l+1;trimmed.height=b-t+1;
-   trimmed.getContext('2d').drawImage(crop,l,t,trimmed.width,trimmed.height,0,0,trimmed.width,trimmed.height);
-   return trimmed;
-  });
-  // Reassemble the 22 isolated silhouettes in a clean transparent sequence atlas.
-  const cell=192,cols=10,rows=3,gutter=20;
-  const atlas=document.createElement('canvas');atlas.width=cols*cell+(cols-1)*gutter;atlas.height=rows*cell+(rows-1)*gutter;
-  const ac=atlas.getContext('2d'),meta=[];
-  isolated.forEach((sprite,index)=>{
-   const col=index%cols,row=Math.floor(index/cols),cellX=col*(cell+gutter),cellY=row*(cell+gutter);
-   const scale=Math.min(166/sprite.width,174/sprite.height),dw=sprite.width*scale,dh=sprite.height*scale;
-   const x=cellX+(cell-dw)/2,y=cellY+180-dh;
-   ac.drawImage(sprite,x,y,dw,dh);meta.push({x,y,w:dw,h:dh});
-  });
-  return {atlas,meta,rows:[meta.slice(0,4),meta.slice(4,10),meta.slice(10,16),meta.slice(16,22)]};
+// The replacement worker sheets use a clean 4×4 pose layout. Each cell is
+// isolated from its actual foreground silhouette; edge-connected pale sheet
+// background and separator rules are discarded before transparent atlas packing.
+let workerWalk=new Image(),workerRun=new Image(),workerPick=new Image(),workerCarry=new Image(),workerCarryIdle=new Image(),workerIdle=new Image(),workerToss=new Image();
+const baseWorkerSheet=new Image();baseWorkerSheet.src='IMG_1390.jpeg?v=worker-sheet-1390';
+const dyeMakerSheet=new Image();dyeMakerSheet.src='IMG_1391.jpeg?v=dye-maker-sheet-1391';
+const dyeTentSheet=new Image();dyeTentSheet.src='IMG_1384.jpeg';
+const dyeVatSheet=new Image();dyeVatSheet.src='IMG_1386.jpeg';
+let dyeMakerCanvas=null,dyeTentCanvas=null,dyeVatCanvas=null;
+let dyeMakerRunFrames=[],dyeMakerCarryFrames=[],dyeMakerIdleFrame=null,dyeMakerPickFrame=null,dyeMakerPickFrames=[];
+function setCanvasImage(image,canvas){image.onload=null;image.src=canvas.toDataURL('image/png')}
+function extractGridPoseCanvases(img){
+ const source=document.createElement('canvas');source.width=img.naturalWidth;source.height=img.naturalHeight;
+ const sc=source.getContext('2d',{willReadFrequently:true});sc.drawImage(img,0,0);
+ const sw=source.width,sh=source.height,cellW=sw/4,cellH=sh/4,frames=[];
+ for(let row=0;row<4;row++)for(let col=0;col<4;col++){
+  const x0=Math.round(col*cellW),y0=Math.round(row*cellH),x1=Math.round((col+1)*cellW),y1=Math.round((row+1)*cellH);
+  const w=x1-x0,h=y1-y0,im=sc.getImageData(x0,y0,w,h),d=im.data,n=w*h;
+  const candidate=new Uint8Array(n),kept=new Uint8Array(n),seen=new Uint8Array(n),stack=new Int32Array(n);
+  // Saturated character colors and dark outline pixels are foreground.
+  // Pale low-contrast paper and neutral separator rules are not.
+  for(let i=0;i<n;i++){
+   const p=i*4,r=d[p],g=d[p+1],b=d[p+2],hi=Math.max(r,g,b),lo=Math.min(r,g,b),sat=hi?((hi-lo)/hi):0,lum=(r+g+b)/3;
+   if(sat>.17||lum<188)candidate[i]=1;
+  }
+  // Keep only components fully inside the cell. Full-width scan/divider
+  // marks touch a cell edge and are therefore rejected, not packed as art.
+  for(let seed=0;seed<n;seed++){
+   if(!candidate[seed]||seen[seed])continue;
+   let top=0,bottom=0,minX=w,minY=h,maxX=-1,maxY=-1,area=0,touches=false;
+   stack[bottom++]=seed;seen[seed]=1;
+   while(top<bottom){
+    const p=stack[top++],px=p%w,py=(p/w)|0;area++;
+    if(px<minX)minX=px;if(px>maxX)maxX=px;if(py<minY)minY=py;if(py>maxY)maxY=py;
+    if(px===0||py===0||px===w-1||py===h-1)touches=true;
+    for(let yy=Math.max(0,py-1);yy<=Math.min(h-1,py+1);yy++)for(let xx=Math.max(0,px-1);xx<=Math.min(w-1,px+1);xx++){
+     const q=yy*w+xx;if(candidate[q]&&!seen[q]){seen[q]=1;stack[bottom++]=q}
+    }
+   }
+   if(!touches&&area>=8)for(let k=0;k<bottom;k++)kept[stack[k]]=1;
+  }
+  // Flood the non-foreground pixels from the cell perimeter. This makes
+  // paper transparent while preserving enclosed light details inside the
+  // character (including white/cream highlights).
+  const bg=new Uint8Array(n);let head=0,tail=0;
+  const push=(p)=>{if(!kept[p]&&!bg[p]){bg[p]=1;stack[tail++]=p}};
+  for(let x=0;x<w;x++){push(x);push((h-1)*w+x)}
+  for(let y=0;y<h;y++){push(y*w);push(y*w+w-1)}
+  while(head<tail){
+   const p=stack[head++],px=p%w,py=(p/w)|0;
+   for(let yy=Math.max(0,py-1);yy<=Math.min(h-1,py+1);yy++)for(let xx=Math.max(0,px-1);xx<=Math.min(w-1,px+1);xx++)push(yy*w+xx);
+  }
+  let l=w,t=h,r=-1,b=-1;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){const p=y*w+x;if(!bg[p]){if(x<l)l=x;if(x>r)r=x;if(y<t)t=y;if(y>b)b=y}else d[p*4+3]=0}
+  if(r<l||b<t)throw new Error('No isolated character found in sheet cell '+row+','+col);
+  // Tight cutout plus a four-pixel antialias safety margin.
+  l=Math.max(0,l-4);t=Math.max(0,t-4);r=Math.min(w-1,r+4);b=Math.min(h-1,b+4);
+  const cut=document.createElement('canvas');cut.width=r-l+1;cut.height=b-t+1;
+  const ci=cut.getContext('2d');const out=ci.createImageData(cut.width,cut.height);
+  for(let yy=0;yy<cut.height;yy++)for(let xx=0;xx<cut.width;xx++){
+   const from=((yy+t)*w+(xx+l))*4,to=(yy*cut.width+xx)*4;
+   out.data[to]=d[from];out.data[to+1]=d[from+1];out.data[to+2]=d[from+2];out.data[to+3]=d[from+3];
+  }
+  ci.putImageData(out,0,0);frames.push(cut);
  }
- dyeMakerSheet.onload=()=>{
-  dyeMakerCanvas=keyMagentaSheet(dyeMakerSheet);
-  const extracted=extractDyeMakerSprites();
-  dyeMakerAtlas=extracted.atlas;dyeMakerFrameMeta=extracted.meta;
-  dyeMakerRunFrames=[...extracted.rows[0],...extracted.rows[1]];
-  dyeMakerIdleFrame=extracted.rows[2][0];
-  dyeMakerPickFrame=extracted.rows[2][2];
-  dyeMakerCarryFrames=extracted.rows[3];
- };
- dyeTentSheet.onload=()=>{dyeTentCanvas=keyMagentaSheet(dyeTentSheet)};
- dyeVatSheet.onload=()=>{dyeVatCanvas=keyMagentaSheet(dyeVatSheet)};
+ return frames;
+}
+function packPoseStrip(frames){
+ const cell=192,out=document.createElement('canvas');out.width=frames.length*cell;out.height=cell;
+ const c=out.getContext('2d');
+ frames.forEach((frame,i)=>{
+  const scale=Math.min(168/frame.width,174/frame.height),dw=frame.width*scale,dh=frame.height*scale;
+  c.drawImage(frame,i*cell+(cell-dw)/2,180-dh,dw,dh);
+ });
+ return out;
+}
+function packDyeMakerAtlas(frames){
+ const cell=192,out=document.createElement('canvas');out.width=cell*4;out.height=cell*4;
+ const c=out.getContext('2d'),meta=[];
+ frames.forEach((frame,i)=>{
+  const col=i%4,row=Math.floor(i/4),scale=Math.min(168/frame.width,174/frame.height),dw=frame.width*scale,dh=frame.height*scale;
+  const x=col*cell+(cell-dw)/2,y=row*cell+180-dh;c.drawImage(frame,x,y,dw,dh);
+  meta.push({x:col*cell,y:row*cell,w:cell,h:cell});
+ });
+ return {atlas:out,meta};
+}
+baseWorkerSheet.onload=()=>{
+ const poses=extractGridPoseCanvases(baseWorkerSheet);
+ setCanvasImage(workerWalk,packPoseStrip(poses.slice(0,4)));
+ setCanvasImage(workerRun,packPoseStrip(poses.slice(4,8)));
+ setCanvasImage(workerIdle,packPoseStrip([poses[8]]));
+ setCanvasImage(workerPick,packPoseStrip([poses[9],poses[10]]));
+ setCanvasImage(workerCarryIdle,packPoseStrip([poses[11]]));
+ setCanvasImage(workerToss,packPoseStrip([poses[11]]));
+ setCanvasImage(workerCarry,packPoseStrip(poses.slice(12,16)));
+};
+let dyeMakerAtlas=null,dyeMakerFrameMeta=[];
+function keyMagentaSheet(img){const cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;const cx=cv.getContext('2d',{willReadFrequently:true});cx.drawImage(img,0,0);const im=cx.getImageData(0,0,cv.width,cv.height),d=im.data;for(let y=0;y<cv.height;y++)for(let x=0;x<cv.width;x++){const i=(y*cv.width+x)*4,r=d[i],g=d[i+1],b=d[i+2];if(r>175&&b>145&&g<90&&r-g>75&&b-g>65)d[i+3]=0;}cx.putImageData(im,0,0);return cv}
+dyeMakerSheet.onload=()=>{
+ const poses=extractGridPoseCanvases(dyeMakerSheet),packed=packDyeMakerAtlas(poses);
+ dyeMakerAtlas=packed.atlas;dyeMakerFrameMeta=packed.meta;
+ dyeMakerRunFrames=dyeMakerFrameMeta.slice(0,8);
+ dyeMakerIdleFrame=dyeMakerFrameMeta[8];
+ dyeMakerPickFrames=[dyeMakerFrameMeta[9],dyeMakerFrameMeta[10]];
+ dyeMakerPickFrame=dyeMakerPickFrames[0];
+ dyeMakerCarryIdleFrame=dyeMakerFrameMeta[11];
+ dyeMakerCarryFrames=dyeMakerFrameMeta.slice(12,16);
+};
+dyeTentSheet.onload=()=>{dyeTentCanvas=keyMagentaSheet(dyeTentSheet)};
+dyeVatSheet.onload=()=>{dyeVatCanvas=keyMagentaSheet(dyeVatSheet)};
 const launcherCollection=new Image();launcherCollection.src='assets/flower-launcher-collection.png?v=matte-unmix-1122-0723';
 const launcherCharge=new Image();launcherCharge.src='assets/flower-launcher-charge.png?v=matte-unmix-1122-0723';
 const launcherFire=new Image();launcherFire.src='assets/flower-launcher-fire.png?v=matte-unmix-1122-0723';
@@ -464,7 +478,7 @@ function drawWorker(w){
  // use the four distinct locomotion frames from the walk strip while the
  // worker is in a running state. The faster cadence and stronger bob make
  // this read as a run without visibly stuttering between duplicate poses.
- const poseSheet=running&&workerWalk.complete&&workerWalk.naturalWidth?workerWalk:sheet;
+ const poseSheet=sheet;
  const count=Math.max(1,Math.floor(poseSheet.naturalWidth/FRAME_W));
  // The picking sheet now contains only two crouch/grab poses.
  // Give each pose a clear, even hold; never advance into a walk frame.
@@ -558,7 +572,7 @@ function assignFlower(w){
   if(w.state==='inside'||!dyeMakerAtlas)return;
   const running=w.state==='toPile'||w.state==='toTent'||w.state==='exitingTent';
   const movingFrames=running&&w.carry&&dyeMakerCarryFrames.length?dyeMakerCarryFrames:dyeMakerRunFrames;
-  const frame=running?movingFrames[Math.floor(w.anim*10)%movingFrames.length]:w.state==='pickingPile'?dyeMakerPickFrame:dyeMakerIdleFrame;
+  const frame=running?movingFrames[Math.floor(w.anim*10)%movingFrames.length]:w.state==='pickingPile'?dyeMakerPickFrames[Math.floor(w.anim*3)%dyeMakerPickFrames.length]:dyeMakerIdleFrame;
   if(!frame||!frame.w||!frame.h)return;
   const scale=Math.min(62/frame.w,58/frame.h),dw=frame.w*scale,dh=frame.h*scale;
   ctx.save();ctx.translate(w.x,w.y);if((w.facing||1)<0)ctx.scale(-1,1);
