@@ -50,9 +50,9 @@ let totalFlowers=10,totalDelivered=0,workers=[],houses=[],flowers=[],particles=[
 const SAVE_KEY='stackThoseFlowersSaveV1';
 const atlas=new Image();atlas.src='assets/flower-sprites.png';
 const pileAtlas=new Image();pileAtlas.src='assets/flower-pile-atlas.png';
-const workerWalk=new Image();workerWalk.src='assets/worker-walk.png?v=1373';
-const workerRun=new Image();workerRun.src='assets/worker-run.png?v=1373';
-const workerPick=new Image();workerPick.src='assets/worker-pick.png?v=1373';
+const workerWalk=new Image();workerWalk.src='assets/worker-walk.png?v=386d36f';
+const workerRun=new Image();workerRun.src='assets/worker-run.png?v=386d36f';
+const workerPick=new Image();workerPick.src='assets/worker-pick.png?v=386d36f';
 let atlasReady=false;atlas.onload=()=>{atlasReady=true}; 
 function resize(){dpr=Math.min(devicePixelRatio||1,2);viewW=innerWidth;viewH=innerHeight;canvas.width=Math.round(viewW*dpr);canvas.height=Math.round(viewH*dpr);ctx.setTransform(dpr,0,0,dpr,0,0)}
 addEventListener('resize',resize);resize();
