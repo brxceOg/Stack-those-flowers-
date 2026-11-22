@@ -104,7 +104,7 @@ let workerWalk=new Image(),workerRun=new Image(),workerPick=new Image(),workerCa
 const baseWorkerSheet=new Image();baseWorkerSheet.src='IMG_1393.jpeg?v=final-base-worker-sheet-1393';
 const dyeMakerSheet=new Image();dyeMakerSheet.src='IMG_1394.jpeg?v=final-witch-dye-maker-sheet-1394';
 const workerDrinkSheet=new Image();workerDrinkSheet.src='IMG_1395.jpeg?v=drinking-sequence-1395';
-const workerDrinkWalk=new Image(),workerDrinkSequence=new Image();
+const workerDrinkSequence=new Image();
 const dyeTentSheet=new Image();dyeTentSheet.src='IMG_1384.jpeg';
 const dyeVatSheet=new Image();dyeVatSheet.src='IMG_1386.jpeg';
 let dyeMakerCanvas=null,dyeTentCanvas=null,dyeVatCanvas=null;
@@ -226,12 +226,12 @@ baseWorkerSheet.onload=()=>{
 let dyeMakerAtlas=null,dyeMakerFrameMeta=[];
 function keyMagentaSheet(img){const cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;const cx=cv.getContext('2d',{willReadFrequently:true});cx.drawImage(img,0,0);const im=cx.getImageData(0,0,cv.width,cv.height),d=im.data;for(let y=0;y<cv.height;y++)for(let x=0;x<cv.width;x++){const i=(y*cv.width+x)*4,r=d[i],g=d[i+1],b=d[i+2];if(r>175&&b>145&&g<90&&r-g>75&&b-g>65)d[i+3]=0;}cx.putImageData(im,0,0);return cv}
 workerDrinkSheet.onload=()=>{
- // IMG_1395 is a 4×2 sheet: the upper row is the approach/run cycle,
- // and the lower row is the four-step pick-up-and-drink sequence.
+ // IMG_1395 is used only for its lower-row four-frame pick-up-and-drink sequence.
+ // Vat approach movement continues to use the worker's existing walk/run sheets.
  const poses=extractGridPoseCanvases(workerDrinkSheet,2);
- const scale=sharedPoseScale(poses);
- setCanvasImage(workerDrinkWalk,packPoseStrip(poses.slice(0,4),scale));
- setCanvasImage(workerDrinkSequence,packPoseStrip(poses.slice(4,8),scale));
+ const drinkFrames=poses.slice(4,8);
+ const scale=sharedPoseScale(drinkFrames);
+ setCanvasImage(workerDrinkSequence,packPoseStrip(drinkFrames,scale));
 };
 dyeMakerSheet.onload=()=>{
  const poses=extractGridPoseCanvases(dyeMakerSheet),packed=packDyeMakerAtlas(poses);
@@ -559,7 +559,7 @@ function drawWorker(w){
  const running=w.state==='toLauncher'||toDyeVat||(w.state==='toFlower'&&w.target&&dist(w,w.target)>300);
  let sheet=workerIdle;
  if(drinking)sheet=workerDrinkSequence||workerIdle;
- else if(toDyeVat)sheet=workerDrinkWalk||workerRun;
+ else if(toDyeVat)sheet=workerRun;
  else if(w.state==='tossing')sheet=workerToss.complete&&workerToss.naturalWidth?workerToss:workerCarry;
  else if(picking)sheet=workerPick;
  else if(w.state==='preToss'&&w.carry)sheet=workerCarryIdle;
