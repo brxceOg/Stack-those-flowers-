@@ -91,7 +91,8 @@ def clean_isolated_paper(crop):
     return Image.fromarray(rgba, "RGBA")
 
 def extract_worker_cycles():
-    # Segment each farmer pose from the transparent source by its connected silhouette.\n    # Five clean frames per source cycle are present in the supplied top row.
+    # Segment each farmer pose from the transparent source by its connected silhouette.
+    # Five clean frames per source cycle are present in the supplied top row.
     # This avoids fixed-width cells that can cut a pose or include its neighbor.
     atlas = Image.open(OUT / "flower-atlas.png").convert("RGBA")
     arr = np.asarray(atlas, dtype=np.uint8)
@@ -111,7 +112,8 @@ def extract_worker_cycles():
         frames = []
         for i, (x0,y0,x1,y1,area) in enumerate(group):
             pad = 3
-            crop = atlas.crop((max(0,x0-pad), max(0,y0-pad), min(atlas.width,x1+pad), min(atlas.height,y1+pad)))\n            crop = clean_isolated_paper(crop)
+            crop = atlas.crop((max(0,x0-pad), max(0,y0-pad), min(atlas.width,x1+pad), min(atlas.height,y1+pad)))
+            crop = clean_isolated_paper(crop)
             bbox = crop.getchannel("A").getbbox()
             if bbox is None:
                 raise RuntimeError(f"{name} frame {i} is empty")
