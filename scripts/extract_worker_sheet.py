@@ -39,6 +39,10 @@ def remove_magenta_matte(image):
     if np.any(seen):
         delta = np.max(np.abs(rgb - MAGENTA), axis=2)
         alpha = np.clip(delta / 255.0, 0.0, 1.0)
+        # JPEG compression leaves tiny color deviations across the flat magenta
+        # field; discard those near-zero coverage pixels instead of preserving
+        # a faint opaque rectangle around every extracted pose.
+        alpha[alpha < 0.085] = 0.0
         safe = np.maximum(alpha, 1.0/255.0)
         unmatte = (rgb - (1.0-alpha[:, :, None])*MAGENTA) / safe[:, :, None]
         rgba[seen, :3] = np.clip(unmatte[seen], 0, 255).astype(np.uint8)
