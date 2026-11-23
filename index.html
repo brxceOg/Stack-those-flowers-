@@ -85,7 +85,7 @@ const W=2600,H=1900,center={x:W/2,y:H/2};
 const BUILD_GRID=96; // Shared footprint/alignment unit for all placeable structures.
 let dpr=1,viewW=0,viewH=0,camera={x:center.x,y:center.y,zoom:.78},placing=false,planningHousing=false,removingSection=false,selling=false,selectedStructure=null,pendingSale=null,selectionStart=null,selectionCurrent=null,menuOpen=false;
 let workerRunUpgradeLevel=0;
-let totalFlowers=10,totalDelivered=0,workers=[],houses=[],campfires=[],dyeTents=[],dyeMakers=[],dyeVats=[],sections=[],flowers=[],particles=[],upgradePops=[],launched=[],tossedFlowers=[],last=performance.now(),toastTimer=0,saveClock=0,nextWorkerId=1,nextDyeMakerId=1;
+let totalFlowers=10,totalDelivered=0,depositedFlowers=[],workers=[],houses=[],campfires=[],dyeTents=[],dyeMakers=[],dyeVats=[],sections=[],flowers=[],particles=[],upgradePops=[],launched=[],tossedFlowers=[],last=performance.now(),toastTimer=0,saveClock=0,nextWorkerId=1,nextDyeMakerId=1;
 const SAVE_KEY='stackThoseFlowersSaveV2';
 try{localStorage.removeItem('stackThoseFlowersSaveV1')}catch(e){}
 const atlas=new Image();atlas.src='assets/flower-sprites.png?v=flower-crops-1122-0739';
@@ -464,7 +464,7 @@ function seedWorld(){
  }
 }
 seedWorld();
-function loadGame(){try{const data=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!data||(data.version!==2&&data.version!==3))return;totalFlowers=Math.max(0,Number(data.flowers)||0);totalDelivered=Math.max(0,Number(data.delivered)||0);workerRunUpgradeLevel=Math.max(0,Math.floor(Number(data.workerRunUpgradeLevel)||0));sections=Array.isArray(data.sections)?data.sections.filter(z=>z&&z.category==='housing'&&Number.isInteger(z.x)&&Number.isInteger(z.y)&&Number.isInteger(z.w)&&Number.isInteger(z.h)&&z.w>=1&&z.h>=1):[];
+function loadGame(){try{const data=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!data||(data.version!==2&&data.version!==3))return;totalFlowers=Math.max(0,Number(data.flowers)||0);totalDelivered=Math.max(0,Number(data.delivered)||0);depositedFlowers=Array.isArray(data.pileFlowers)?data.pileFlowers.filter(t=>typeof t==='string'&&Object.prototype.hasOwnProperty.call(FLOWER_SOURCE_X,t)).slice(0,10000):Array.from({length:Math.min(totalDelivered,10000)},(_,i)=>FLOWER_TYPES[(i*7+Math.floor(i/3))%FLOWER_TYPES.length]);if(depositedFlowers.length>totalDelivered)depositedFlowers.length=totalDelivered;workerRunUpgradeLevel=Math.max(0,Math.floor(Number(data.workerRunUpgradeLevel)||0));sections=Array.isArray(data.sections)?data.sections.filter(z=>z&&z.category==='housing'&&Number.isInteger(z.x)&&Number.isInteger(z.y)&&Number.isInteger(z.w)&&Number.isInteger(z.h)&&z.w>=1&&z.h>=1):[];
  // Migrate existing saves onto the shared structure grid. Snap legacy house
  // positions to cell centers, keep them inside the garden, and collapse any
  // legacy placements that land in the same cell. Persist the migrated layout.
@@ -474,7 +474,7 @@ function loadGame(){try{const data=JSON.parse(localStorage.getItem(SAVE_KEY)||'n
  dyeVats=Array.isArray(data.dyeVats)?data.dyeVats.filter(v=>Number.isFinite(v.x)&&Number.isFinite(v.y)).map(v=>({...v,type:Math.max(0,Math.min(7,Math.floor(Number(v.type)||0)))})):[];
  dyeMakers=dyeTents.map(t=>({id:nextDyeMakerId++,tent:t,x:t.x,y:t.y+(t.brewing?42:48),state:t.brewing?'inside':'idle',anim:0,carry:false}));
  workers=houses.map(h=>({id:nextWorkerId++,houseX:h.x,houseY:h.y,x:h.x,y:h.y+35,state:'search',anim:0,carry:null,target:null,pickingFlower:null,dyeBuffTimer:0,drinkVat:null}));saveGame();}catch(e){}}
-function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({version:3,flowers:totalFlowers,delivered:totalDelivered,workerRunUpgradeLevel,houses,campfires,dyeTents,dyeVats,sections}));}catch(e){}}
+function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({version:3,flowers:totalFlowers,delivered:totalDelivered,pileFlowers:depositedFlowers,workerRunUpgradeLevel,houses,campfires,dyeTents,dyeVats,sections}));}catch(e){}}
 loadGame();relocateFlowersFromPlannedAreas();addEventListener('pagehide',saveGame);
 const launcher={x:center.x,y:center.y,scale:1};
 function drawGround(){
@@ -607,52 +607,32 @@ function updateLauncher(dt){
  else if(launcherAnim.state==='charge'){launcherAnim.state='fire';launcherAnim.time=0;launched.push({type:launcherAnim.flowerType,time:0,duration:.54,x:launcher.x+72,y:launcher.y-34,tx:launcher.x+200,ty:launcher.y+22})}
  else{emitLauncherBurst();if(launcherAnim.queue.length)startLauncherSequence(launcherAnim.queue.shift());else{launcherAnim.state='idle';launcherAnim.time=0}}
 }
+function pileFlowerPosition(index,count){
+ // Each deposited flower owns a stable slot in the mound. Lower rows are
+ // wider and form the base; later deliveries fill the next open slot.
+ const cols=Math.max(1,Math.ceil(Math.sqrt(count*2)));
+ const rows=[];let left=count;
+ for(let r=0;left>0;r++){const take=Math.min(Math.max(1,cols-r),left);rows.push(take);left-=take}
+ let offset=0,row=rows.length-1;
+ for(let r=rows.length-1;r>=0;r--){if(index<offset+rows[r]){row=r;break}offset+=rows[r]}
+ const col=index-offset,items=rows[row],width=(items-1)*17;
+ const seed=index+1;
+ return{x:-width/2+col*17+Math.sin(seed*91.73)*3.2,y:20-row*13+Math.cos(seed*47.19)*2.2,angle:Math.sin(seed*19.31)*.17,scale:.70+((seed*13)%7)*.025};
+}
 function drawPile(){
- const x=launcher.x+225,y=launcher.y+52;
- const pending=launcherAnim.queue.length+(launcherAnim.state!=='idle'&&launched.length===0?1:0)+launched.length;
- const n=Math.min(Math.max(0,totalDelivered-pending),80);
+ const x=launcher.x+225,y=launcher.y+52,count=depositedFlowers.length;
  ctx.save();ctx.translate(x,y);
- if(n>0){
-  // Match the contact shadow to the actual mound footprint. A single
-  // deposited flower gets only a small shadow; it expands as rows accumulate.
-  const baseCols=Math.ceil(Math.sqrt(n*2));
-  const rows=[];let remaining=n,row=0;
-  while(remaining>0){
-   const count=Math.max(1,baseCols-row);
-   const take=Math.min(count,remaining);
-   rows.push(take);remaining-=take;row++;
-  }
-  const widestRow=Math.max(...rows);
-  const pileWidth=31+(widestRow-1)*17;
-  const pileHeight=31+(rows.length-1)*13;
-  const shadowRx=Math.max(18,pileWidth*.56);
-  const shadowRy=Math.max(10,pileHeight*.34);
-  // Keep the shadow tucked behind the flower silhouettes, never as an
-  // oversized permanent ground oval when the pile is empty.
-  ctx.fillStyle='rgba(35,59,34,.25)';ctx.beginPath();
-  ctx.ellipse(2,1,shadowRx,shadowRy,-.025,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='rgba(35,59,34,.12)';ctx.beginPath();
-  ctx.ellipse(1,5,shadowRx*.80,shadowRy*.62,-.025,0,Math.PI*2);ctx.fill();
+ if(count>0){
+  const baseCols=Math.ceil(Math.sqrt(count*2)),rowCount=Math.max(1,Math.ceil(count/baseCols));
+  const pileWidth=31+(baseCols-1)*17,pileHeight=31+(rowCount-1)*13;
+  ctx.fillStyle='rgba(35,59,34,.25)';ctx.beginPath();ctx.ellipse(2,1,Math.max(18,pileWidth*.56),Math.max(10,pileHeight*.34),-.025,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='rgba(35,59,34,.12)';ctx.beginPath();ctx.ellipse(1,5,Math.max(18,pileWidth*.45),Math.max(10,pileHeight*.22),-.025,0,Math.PI*2);ctx.fill();
   if(atlasReady){
-   // Pack real flower cutouts into overlapping rows. Each higher row is
-   // slightly narrower, creating a rounded mound instead of a flat grid.
-   const types=FLOWER_TYPES;
-   let index=0;
-   for(let r=rows.length-1;r>=0;r--){
-    const count=rows[r],rowWidth=(count-1)*17;
-    for(let c=0;c<count;c++){
-     const seed=index+1;
-     const jitterX=Math.sin(seed*91.73)*3.2;
-     const jitterY=Math.cos(seed*47.19)*2.2;
-     const type=types[(seed*7+Math.floor(seed/3))%types.length];
-     const scale=.70+((seed*13)%7)*.025;
-     const px=-rowWidth/2+c*17+jitterX;
-     const py=20-r*13+jitterY;
-     const angle=Math.sin(seed*19.31)*.17;
-     ctx.save();ctx.translate(px,py);ctx.rotate(angle);
-     ctx.drawImage(atlas,FLOWER_SOURCE_X[type],0,FLOWER_FRAME,FLOWER_FRAME,-22*scale,-44*scale,44*scale,44*scale);
-     ctx.restore();index++;
-    }
+   for(let i=0;i<count;i++){
+    const slot=pileFlowerPosition(i,count),type=depositedFlowers[i],sx=FLOWER_SOURCE_X[type]??0;
+    ctx.save();ctx.translate(slot.x,slot.y);ctx.rotate(slot.angle);
+    ctx.drawImage(atlas,sx,0,FLOWER_FRAME,FLOWER_FRAME,-22*slot.scale,-44*slot.scale,44*slot.scale,44*slot.scale);
+    ctx.restore();
    }
   }
  }
@@ -771,7 +751,7 @@ function drawTossedFlower(t){
  if(atlasReady)ctx.drawImage(atlas,sx,0,FLOWER_FRAME,FLOWER_FRAME,-16,-32,32,32);
  ctx.restore();
 }
-function availablePileFlowers(){const pending=launcherAnim.queue.length+(launcherAnim.state!=='idle'&&launched.length===0?1:0)+launched.length;return Math.max(0,totalDelivered-pending)}
+function availablePileFlowers(){return depositedFlowers.length}
  function moveToward(obj,target,speed,dt){const dx=target.x-obj.x,dy=target.y-obj.y,d=Math.hypot(dx,dy);if(Math.abs(dx)>0.01)obj.facing=dx<0?-1:1;if(d<speed*dt+3){obj.x=target.x;obj.y=target.y;return true}obj.x+=dx/d*speed*dt;obj.y+=dy/d*speed*dt;obj.anim+=dt;return false}
 function releaseFlowerReservation(w){
  if(w.target&&w.target.reservedBy===w.id)delete w.target.reservedBy;
@@ -832,7 +812,7 @@ function assignFlower(w){
  }
  function update(dt){
  campfireClock+=dt;updateLauncher(dt);for(const t of dyeTents){if(t.brewing){t.brewTimer-=dt;t.brewAnim=(t.brewAnim||0)+dt;if(t.brewTimer<=0){t.brewing=false;t.brewTimer=0;const type=(t.nextVatType??Math.floor(Math.random()*8));dyeVats.push({x:t.x,y:t.y+43,tx:t.x+38,ty:t.y+62,age:0,type});t.nextVatType=null;particles.push({x:t.x+68,y:t.y-8,vx:rand(20,65),vy:rand(-90,-35),life:.7,color:'#d94b8b'});saveGame()}}}
-  for(const w of dyeMakers){if(w.state==='idle'&&!w.tent.brewing&&availablePileFlowers()>dyeMakers.filter(m=>m.state==='toPile'||m.state==='pickingPile').length){w.state='toPile';w.anim=0;w.carry=false;w.target={x:launcher.x+225,y:launcher.y+52}}if(w.state==='toPile'){if(moveToward(w,w.target,145,dt)){w.state='pickingPile';w.timer=.62;w.anim=0;w.target=null}}else if(w.state==='pickingPile'){w.timer-=dt;w.anim+=dt;if(w.timer<=0){if(availablePileFlowers()>0){totalDelivered--;w.carry=true;w.carryType=FLOWER_TYPES[Math.floor(Math.random()*FLOWER_TYPES.length)];w.state='toTent';w.anim=0;w.target={x:w.tent.x,y:w.tent.y+42};w.tent.nextVatType=Math.floor(Math.random()*8)}else{w.state='idle';w.target=null}}}else if(w.state==='toTent'){if(moveToward(w,w.target,145,dt)){w.state='inside';w.carry=false;w.carryType=null;w.anim=0;w.tent.brewing=true;w.tent.brewTimer=4.5;w.tent.brewAnim=0;saveGame()}}else if(w.state==='inside'&&!w.tent.brewing){w.state='exitingTent';w.target={x:w.tent.x,y:w.tent.y+58};w.anim=0}else if(w.state==='exitingTent'){if(moveToward(w,w.target,92,dt)){w.state='idle';w.target=null;w.anim=0}}}
+  for(const w of dyeMakers){if(w.state==='idle'&&!w.tent.brewing&&availablePileFlowers()>dyeMakers.filter(m=>m.state==='toPile'||m.state==='pickingPile').length){w.state='toPile';w.anim=0;w.carry=false;w.target={x:launcher.x+225,y:launcher.y+52}}if(w.state==='toPile'){if(moveToward(w,w.target,145,dt)){w.state='pickingPile';w.timer=.62;w.anim=0;w.target=null}}else if(w.state==='pickingPile'){w.timer-=dt;w.anim+=dt;if(w.timer<=0){if(availablePileFlowers()>0){totalDelivered--;depositedFlowers.shift();w.carry=true;w.carryType=FLOWER_TYPES[Math.floor(Math.random()*FLOWER_TYPES.length)];w.state='toTent';w.anim=0;w.target={x:w.tent.x,y:w.tent.y+42};w.tent.nextVatType=Math.floor(Math.random()*8)}else{w.state='idle';w.target=null}}}else if(w.state==='toTent'){if(moveToward(w,w.target,145,dt)){w.state='inside';w.carry=false;w.carryType=null;w.anim=0;w.tent.brewing=true;w.tent.brewTimer=4.5;w.tent.brewAnim=0;saveGame()}}else if(w.state==='inside'&&!w.tent.brewing){w.state='exitingTent';w.target={x:w.tent.x,y:w.tent.y+58};w.anim=0}else if(w.state==='exitingTent'){if(moveToward(w,w.target,92,dt)){w.state='idle';w.target=null;w.anim=0}}}
  
   for(const pop of upgradePops)pop.time+=dt;upgradePops=upgradePops.filter(pop=>pop.time<pop.duration);
  saveClock+=dt;if(saveClock>=2.5){saveClock=0;saveGame()}
@@ -899,7 +879,7 @@ function assignFlower(w){
  for(const v of dyeVats)v.age=(v.age||0)+dt;
  for(const p of particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt}particles=particles.filter(p=>p.life>0);
   for(const t of tossedFlowers)t.time+=dt;tossedFlowers=tossedFlowers.filter(t=>t.time<t.duration);
- for(const l of launched)l.time+=dt;launched=launched.filter(l=>l.time<l.duration);
+ for(const l of launched)l.time+=dt;const completedFlights=launched.filter(l=>l.time>=l.duration);for(const l of completedFlights){depositedFlowers.push(l.type||'daisy');if(depositedFlowers.length>10000)depositedFlowers.shift()}launched=launched.filter(l=>l.time<l.duration);
  document.getElementById('workerCount').textContent=workers.length;document.getElementById('flowerCount').textContent=totalFlowers;
 }
 function launchFlower(type='daisy'){if(launcherAnim.state==='idle'&&launcherAnim.queue.length===0)startLauncherSequence(type);else launcherAnim.queue.push(type||'daisy')}
