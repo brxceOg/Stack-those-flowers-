@@ -75,6 +75,7 @@ A standalone, mobile-first idle gathering game for iPhone Safari, hosted as a Gi
 
 ## Dye maker production
 - A Dye Maker Tent costs 35 flowers and must be placed inside a planned housing section, following the existing building placement rules.
+- The tent's soft ground shadow is tucked close beneath the tent base (centered at y=36 in tent-local drawing coordinates) so it reads as a contact shadow, not a detached oval.
 - Each tent has one dedicated dye maker. The maker waits until a flower is visibly available in the flower pile, runs to collect it, carries it back to the tent, and starts a 4.5-second brewing cycle.
 - When brewing finishes, the tent spits a physical dye-vat item out from its entrance. Dye vats remain in the world and are saved with the existing V3 save data; the dye tent positions are also saved. Existing V2/V3 saves without these fields migrate to empty dye-tent and dye-vat arrays.
 - The base worker uses `IMG_1393.jpeg`; the Dye Maker uses `IMG_1394.jpeg`. Both are 4×4 pale-background sheets. Each cell is independently segmented, edge-connected background and separator marks are discarded, enclosed light details are retained, and the isolated poses are packed into transparent frame canvases. The base worker uses rows 1–4 for walk, run, idle/pickup/toss, and carrying. The Dye Maker uses rows 1–4 for run, idle/pickup/interaction, and carrying.
