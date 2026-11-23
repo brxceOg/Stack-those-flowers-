@@ -923,7 +923,7 @@ function assignFlower(w){
  for(const p of particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt}particles=particles.filter(p=>p.life>0);for(const p of spentFlowers){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=310*dt;p.rotation+=p.spin*dt;p.life-=dt}spentFlowers=spentFlowers.filter(p=>p.life>0);
  for(const puff of footstepPuffs){puff.life-=dt;puff.x+=puff.drift*dt;puff.drift*=Math.max(0,1-dt*2)}footstepPuffs=footstepPuffs.filter(puff=>puff.life>0);
   for(const t of tossedFlowers)t.time+=dt;tossedFlowers=tossedFlowers.filter(t=>t.time<t.duration);
- for(const l of launched)l.time+=dt;const completedFlights=launched.filter(l=>l.time>=l.duration);for(const l of completedFlights){depositedFlowers.push(l.type||'daisy');if(depositedFlowers.length>10000)depositedFlowers.shift();totalFlowers=depositedFlowers.length;totalDelivered=depositedFlowers.length}if(completedFlights.length)saveGame()launched=launched.filter(l=>l.time<l.duration);
+ for(const l of launched)l.time+=dt;const completedFlights=launched.filter(l=>l.time>=l.duration);for(const l of completedFlights){depositedFlowers.push(l.type||'daisy');if(depositedFlowers.length>10000)depositedFlowers.shift();totalFlowers=depositedFlowers.length;totalDelivered=depositedFlowers.length}if(completedFlights.length)saveGame();launched=launched.filter(l=>l.time<l.duration);
  document.getElementById('workerCount').textContent=workers.length;document.getElementById('flowerCount').textContent=depositedFlowers.length;
 }
 function launchFlower(type='daisy'){if(launcherAnim.state==='idle'&&launcherAnim.queue.length===0)startLauncherSequence(type);else launcherAnim.queue.push(type||'daisy')}
