@@ -103,3 +103,4 @@ Preserve both original files unchanged. All production sprite assets must be der
 - The Dye Maker Tent build-drawer icon must use a crop of the actual first resting tent frame from `IMG_1384.jpeg`, not an emoji or generic flask icon.
 - The Worker House renderer must alpha-bound the complete first house frame and fit it proportionally inside its display area without clipping any opaque sprite pixels.
 - Keep contextual structure-menu startup free of null-element event bindings. Its active purchase, sell, and close controls must retain working handlers; explicitly disabled future-upgrade placeholders remain disabled by design.
+- The Dye Maker Tent build-menu icon must be generated from the magenta-keyed transparent canvas: crop the first resting frame from the keyed sheet and display it through a PNG data URL. Never use the original JPEG directly as a CSS background, because that retains its magenta matte.
