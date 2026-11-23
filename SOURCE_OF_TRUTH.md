@@ -22,6 +22,8 @@ A standalone, mobile-first idle gathering game for iPhone Safari, hosted as a Gi
 - Camera supports one-finger drag, two-finger pinch zoom, zoom buttons, and a recenter button.
 - The HUD and build drawer remain fixed while the world moves beneath them.
 
+- The HUD flower counter is the exact number of flowers currently in the visible pile. Worker deliveries are counted when their launched flowers land; Dye Makers decrement the count when they physically collect a pile flower. Building and upgrade costs remove actual flowers from the pile, and those flowers tumble/fall outward briefly before fading. Structure-sale refunds add flowers back into the pile. The saved flower balance is reconciled to the saved pile contents when loading older saves.
+
 ## Structure selling
 - Selling is accessed from the contextual menu opened by tapping a placed Worker House or Campfire; the player reviews its flower refund, then explicitly confirms or cancels. The build drawer contains no sell-structure mode or button.
 - Selling a Worker House refunds 5 flowers and removes its assigned worker; selling a Campfire refunds 12 flowers and removes its boost radius.
