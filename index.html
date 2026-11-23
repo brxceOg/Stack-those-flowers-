@@ -86,7 +86,7 @@ const BUILD_GRID=96; // Shared footprint/alignment unit for all placeable struct
 let dpr=1,viewW=0,viewH=0,camera={x:center.x,y:center.y,zoom:.78},placing=false,planningHousing=false,removingSection=false,selling=false,selectedStructure=null,pendingSale=null,selectionStart=null,selectionCurrent=null,menuOpen=false;
 const CHARACTER_DISPLAY_SCALE=.72; // Compact shared display scale for small, clearly readable workers and Dye Makers.
 let workerRunUpgradeLevel=0,launcherSpeedUpgradeLevel=0;
-let totalFlowers=10,totalDelivered=0,depositedFlowers=[],workers=[],houses=[],campfires=[],dyeTents=[],dyeMakers=[],dyeVats=[],sections=[],flowers=[],particles=[],upgradePops=[],launched=[],tossedFlowers=[],last=performance.now(),toastTimer=0,saveClock=0,nextWorkerId=1,nextDyeMakerId=1;
+let totalFlowers=10,totalDelivered=0,depositedFlowers=[],workers=[],houses=[],campfires=[],dyeTents=[],dyeMakers=[],dyeVats=[],sections=[],flowers=[],particles=[],footstepPuffs=[],upgradePops=[],launched=[],tossedFlowers=[],last=performance.now(),toastTimer=0,saveClock=0,nextWorkerId=1,nextDyeMakerId=1;
 const SAVE_KEY='stackThoseFlowersSaveV2';
 try{localStorage.removeItem('stackThoseFlowersSaveV1')}catch(e){}
 const atlas=new Image();atlas.src='assets/flower-sprites.png?v=flower-crops-1122-0739';
@@ -736,6 +736,9 @@ function drawWorld(){
  ctx.clearRect(0,0,viewW,viewH);ctx.save();ctx.translate(viewW/2,viewH/2);ctx.scale(camera.zoom,camera.zoom);ctx.translate(-camera.x,-camera.y);
  drawGround();if(placing||planningHousing||selling)drawPlacementGrid();drawPlannedSections();for(const f of flowers)drawFlower(f);for(const h of houses)drawHouse(h);for(const c of campfires)drawCampfire(c);for(const w of dyeMakers)if(w.state==='toTent'||w.state==='inside'||w.state==='exitingTent')drawDyeMaker(w);for(const t of dyeTents)drawDyeTent(t);drawLauncher();drawPile();for(const v of dyeVats)drawDyeVat(v);
  for(const p of particles){ctx.fillStyle=p.color;ctx.globalAlpha=Math.max(0,p.life);ctx.beginPath();ctx.arc(p.x,p.y,4,0,7);ctx.fill()}ctx.globalAlpha=1;
+ // Footstep dust is drawn after the ground/structures but before all
+ // character sprites, keeping every puff tucked beneath the feet.
+ for(const puff of footstepPuffs){const t=Math.max(0,puff.life/puff.duration),fade=Math.sin(t*Math.PI/2);ctx.save();ctx.globalAlpha=fade*.34;ctx.translate(puff.x,puff.y+(1-t)*2);const s=puff.scale*(.7+(1-t)*.45);ctx.fillStyle='#eee6c9';ctx.beginPath();ctx.ellipse(0,0,5.2*s,2.5*s,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=fade*.19;ctx.beginPath();ctx.ellipse(-3.4*s,-.8*s,3.2*s,1.8*s,-.25,0,Math.PI*2);ctx.ellipse(3.1*s,-.5*s,3.5*s,1.7*s,.22,0,Math.PI*2);ctx.fill();ctx.restore()}
  for(const t of tossedFlowers)drawTossedFlower(t);
   for(const l of launched)drawMachineFlower(l);
   for(const w of workers)drawWorker(w);for(const w of dyeMakers)if(w.state!=='toTent'&&w.state!=='inside'&&w.state!=='exitingTent')drawDyeMaker(w);
@@ -760,7 +763,21 @@ function drawTossedFlower(t){
  ctx.restore();
 }
 function availablePileFlowers(){return depositedFlowers.length}
- function moveToward(obj,target,speed,dt){const dx=target.x-obj.x,dy=target.y-obj.y,d=Math.hypot(dx,dy);if(Math.abs(dx)>0.01)obj.facing=dx<0?-1:1;if(d<speed*dt+3){obj.x=target.x;obj.y=target.y;return true}obj.x+=dx/d*speed*dt;obj.y+=dy/d*speed*dt;obj.anim+=dt;return false}
+ function emitFootstepPuff(obj){
+ // One compact dust puff per alternating footfall. Keep a hard cap so large
+ // colonies cannot accumulate an unbounded number of transient effects.
+ footstepPuffs.push({x:obj.x+rand(-2.5,2.5),y:obj.y+2,life:.32,duration:.32,scale:rand(.78,1.12),drift:rand(-7,7)});
+ if(footstepPuffs.length>100)footstepPuffs.splice(0,footstepPuffs.length-100);
+}
+function moveToward(obj,target,speed,dt){const dx=target.x-obj.x,dy=target.y-obj.y,d=Math.hypot(dx,dy);if(Math.abs(dx)>0.01)obj.facing=dx<0?-1:1;if(d<speed*dt+3){obj.x=target.x;obj.y=target.y;return true}obj.x+=dx/d*speed*dt;obj.y+=dy/d*speed*dt;obj.anim+=dt;
+ // The dust cadence follows the same walk/run animation rate used by each
+ // character renderer, with a puff every two frames (one alternating step).
+ const isDyeMaker=!!obj.tent;
+ const running=isDyeMaker||obj.state==='toLauncher'||obj.state==='toDyeVat'||(obj.state==='toFlower'&&obj.target&&dist(obj,obj.target)>300);
+ const stepRate=isDyeMaker?8:(running?9:7.5);
+ obj.footstepPhase=(obj.footstepPhase||0)+dt*stepRate/2;
+ while(obj.footstepPhase>=1){obj.footstepPhase-=1;emitFootstepPuff(obj)}
+ return false}
 function releaseFlowerReservation(w){
  if(w.target&&w.target.reservedBy===w.id)delete w.target.reservedBy;
  if(w.pickingFlower&&w.pickingFlower.reservedBy===w.id)delete w.pickingFlower.reservedBy;
@@ -886,6 +903,7 @@ function assignFlower(w){
  }
  for(const v of dyeVats)v.age=(v.age||0)+dt;
  for(const p of particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt}particles=particles.filter(p=>p.life>0);
+ for(const puff of footstepPuffs){puff.life-=dt;puff.x+=puff.drift*dt;puff.drift*=Math.max(0,1-dt*2)}footstepPuffs=footstepPuffs.filter(puff=>puff.life>0);
   for(const t of tossedFlowers)t.time+=dt;tossedFlowers=tossedFlowers.filter(t=>t.time<t.duration);
  for(const l of launched)l.time+=dt;const completedFlights=launched.filter(l=>l.time>=l.duration);for(const l of completedFlights){depositedFlowers.push(l.type||'daisy');if(depositedFlowers.length>10000)depositedFlowers.shift()}launched=launched.filter(l=>l.time<l.duration);
  document.getElementById('workerCount').textContent=workers.length;document.getElementById('flowerCount').textContent=totalFlowers;
