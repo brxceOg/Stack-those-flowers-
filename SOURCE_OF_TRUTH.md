@@ -68,6 +68,8 @@ A standalone, mobile-first idle gathering game for iPhone Safari, hosted as a Gi
 - Upgrade progression is universal per structure category, not individually attached to each building. The Worker House menu previews upgrades that apply to all Worker Houses; the Campfire menu previews upgrades that apply to all Campfires. Opening the menu on one building shows the upgrade options for its entire category.
 - The first Worker House upgrade is **Run Speed**: each purchase increases all workers' running movement speed by 5%. Its shared level is saved in the existing V3 save data; older V2/V3 saves default to level 0. The first purchase costs 25 flowers; each subsequent purchase costs 1.5× the previous price, rounded up. The upgrade does not change walking speed or flower-picking speed.
 
+- While a worker or Dye Maker walks or runs, a small soft dust puff appears at alternating footfalls, synchronized to the character's walk/run animation cadence. Puffs last about 0.32 seconds, drift slightly, fade naturally, render beneath character sprites, and are capped to keep particle use bounded. Footstep effects are visual-only and do not alter movement, animation, or saves.
+
 - Successfully purchasing a Worker House upgrade triggers a small cartoon-green up-arrow beside every worker's head. Each arrow drifts gently upward and to the right, then fades away as a brief purchase-success celebration; it is visual feedback only.
 
 - After a Worker House upgrade purchase, the open upgrade menu refreshes its next price in place without reopening or recalculating its position. The menu stays anchored exactly where the player opened it.
