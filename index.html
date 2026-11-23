@@ -607,30 +607,56 @@ function updateLauncher(dt){
  else if(launcherAnim.state==='charge'){launcherAnim.state='fire';launcherAnim.time=0;launched.push({type:launcherAnim.flowerType,time:0,duration:.54,x:launcher.x+72,y:launcher.y-34,tx:launcher.x+200,ty:launcher.y+22})}
  else{emitLauncherBurst();if(launcherAnim.queue.length)startLauncherSequence(launcherAnim.queue.shift());else{launcherAnim.state='idle';launcherAnim.time=0}}
 }
+const PILE_TIER_CAPACITY=18;
 function pileFlowerPosition(index,count){
- // Each deposited flower owns a stable slot in the mound. Lower rows are
- // wider and form the base; later deliveries fill the next open slot.
- const cols=Math.max(1,Math.ceil(Math.sqrt(count*2)));
- const rows=[];let left=count;
- for(let r=0;left>0;r++){const take=Math.min(Math.max(1,cols-r),left);rows.push(take);left-=take}
- let offset=0,row=0;
- for(let r=0;r<rows.length;r++){if(index<offset+rows[r]){row=r;break}offset+=rows[r]}
- const col=index-offset,items=rows[row],width=(items-1)*17;
+ // A fixed circular footprint with two staggered rings per tier gives the
+ // flowers a cylindrical tower silhouette instead of a widening mound.
+ const tier=Math.floor(index/PILE_TIER_CAPACITY),slot=index%PILE_TIER_CAPACITY;
+ const inner=slot>=12,ringIndex=inner?slot-12:slot,ringCount=inner?6:12;
+ const angle=(Math.PI*2*ringIndex/ringCount)+(tier%2)*.19+(inner?Math.PI/6:0);
+ const rx=inner?31:55,ry=inner?10:19;
  const seed=index+1;
- return{x:-width/2+col*17+Math.sin(seed*91.73)*3.2,y:20-row*13+Math.cos(seed*47.19)*2.2,angle:Math.sin(seed*19.31)*.17,scale:.70+((seed*13)%7)*.025};
+ return{
+  x:Math.cos(angle)*rx+Math.sin(seed*91.73)*1.5,
+  y:-tier*15+Math.sin(angle)*ry+Math.cos(seed*47.19)*1.1,
+  angle:Math.sin(seed*19.31)*.2,
+  scale:(inner?.66:.73)+((seed*13)%5)*.018,
+  depth:Math.sin(angle)
+ };
 }
 function drawPile(){
- const x=launcher.x+225,y=launcher.y+52,count=depositedFlowers.length;
+ const x=launcher.x+225,y=launcher.y+54,count=depositedFlowers.length;
  ctx.save();ctx.translate(x,y);
  if(count>0){
-  const baseCols=Math.ceil(Math.sqrt(count*2)),rowCount=Math.max(1,Math.ceil(count/baseCols));
-  const pileWidth=31+(baseCols-1)*17,pileHeight=31+(rowCount-1)*13;
-  ctx.fillStyle='rgba(35,59,34,.25)';ctx.beginPath();ctx.ellipse(2,1,Math.max(18,pileWidth*.56),Math.max(10,pileHeight*.34),-.025,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='rgba(35,59,34,.12)';ctx.beginPath();ctx.ellipse(1,5,Math.max(18,pileWidth*.45),Math.max(10,pileHeight*.22),-.025,0,Math.PI*2);ctx.fill();
+  const tiers=Math.ceil(count/PILE_TIER_CAPACITY),rx=63,ry=23;
+  const bodyHeight=31+(tiers-1)*15,topY=-bodyHeight;
+  // Shaded side wall and rounded base establish a clear 3D cylinder.
+  const side=ctx.createLinearGradient(-rx,0,rx,0);
+  side.addColorStop(0,'#496b3b');side.addColorStop(.22,'#73934c');
+  side.addColorStop(.52,'#8eaa59');side.addColorStop(.82,'#668747');
+  side.addColorStop(1,'#3f6037');
+  ctx.beginPath();ctx.moveTo(-rx,topY);
+  ctx.lineTo(-rx,0);
+  ctx.bezierCurveTo(-rx,-12,-rx*.52,10,0,10);
+  ctx.bezierCurveTo(rx*.52,10,rx,-12,rx,0);
+  ctx.lineTo(rx,topY);ctx.closePath();ctx.fillStyle=side;ctx.fill();
+  ctx.strokeStyle='rgba(39,66,34,.55)';ctx.lineWidth=2;ctx.stroke();
+  // Subtle vertical highlights make the curved side read as rounded.
+  const shine=ctx.createLinearGradient(-rx,0,-rx+18,0);
+  shine.addColorStop(0,'rgba(255,255,210,.22)');shine.addColorStop(1,'rgba(255,255,210,0)');
+  ctx.fillStyle=shine;ctx.fillRect(-rx+2,topY+8,16,bodyHeight-4);
+  ctx.beginPath();ctx.ellipse(0,topY,rx,ry,0,0,Math.PI*2);
+  const cap=ctx.createLinearGradient(0,topY-ry,0,topY+ry);
+  cap.addColorStop(0,'#a8bd70');cap.addColorStop(.55,'#809e55');cap.addColorStop(1,'#587b40');
+  ctx.fillStyle=cap;ctx.fill();ctx.strokeStyle='rgba(44,73,36,.7)';ctx.lineWidth=2;ctx.stroke();
+  // Draw every flower as its own sprite, sorted back-to-front by screen depth.
   if(atlasReady){
-   for(let i=0;i<count;i++){
-    const slot=pileFlowerPosition(i,count),type=depositedFlowers[i],sx=FLOWER_SOURCE_X[type]??0;
-    ctx.save();ctx.translate(slot.x,slot.y);ctx.rotate(slot.angle);
+   const placed=[];
+   for(let i=0;i<count;i++)placed.push({index:i,slot:pileFlowerPosition(i,count)});
+   placed.sort((a,b)=>a.slot.y-b.slot.y);
+   for(const item of placed){
+    const i=item.index,slot=item.slot,type=depositedFlowers[i],sx=FLOWER_SOURCE_X[type]??0;
+    ctx.save();ctx.translate(slot.x,topY+ry*.72+slot.y);ctx.rotate(slot.angle);
     ctx.drawImage(atlas,sx,0,FLOWER_FRAME,FLOWER_FRAME,-22*slot.scale,-44*slot.scale,44*slot.scale,44*slot.scale);
     ctx.restore();
    }
