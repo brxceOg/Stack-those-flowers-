@@ -629,7 +629,7 @@ function drawPile(){
  ctx.save();ctx.translate(x,y);
  if(count>0){
   const tiers=Math.ceil(count/PILE_TIER_CAPACITY),rx=63,ry=23;
-  const bodyHeight=31+(tiers-1)*15,topY=-bodyHeight;
+  const bodyHeight=12+(tiers-1)*15,topY=-bodyHeight;
   // Shaded side wall and rounded base establish a clear 3D cylinder.
   const side=ctx.createLinearGradient(-rx,0,rx,0);
   side.addColorStop(0,'#496b3b');side.addColorStop(.22,'#73934c');
@@ -656,7 +656,7 @@ function drawPile(){
    placed.sort((a,b)=>a.slot.y-b.slot.y);
    for(const item of placed){
     const i=item.index,slot=item.slot,type=depositedFlowers[i],sx=FLOWER_SOURCE_X[type]??0;
-    ctx.save();ctx.translate(slot.x,topY+ry*.72+slot.y);ctx.rotate(slot.angle);
+    ctx.save();ctx.translate(slot.x,slot.y);ctx.rotate(slot.angle);
     ctx.drawImage(atlas,sx,0,FLOWER_FRAME,FLOWER_FRAME,-22*slot.scale,-44*slot.scale,44*slot.scale,44*slot.scale);
     ctx.restore();
    }
