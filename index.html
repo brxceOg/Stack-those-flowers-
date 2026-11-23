@@ -630,6 +630,10 @@ function drawPile(){
  if(count>0){
   const tiers=Math.ceil(count/PILE_TIER_CAPACITY),rx=63,ry=23;
   const bodyHeight=12+(tiers-1)*15,topY=-bodyHeight;
+  // Keep the pile's only cast shadow as a compact contact shadow at its base.
+  // It must not extend up behind the tower silhouette.
+  ctx.save();ctx.globalAlpha=.2;ctx.fillStyle='#263b25';
+  ctx.beginPath();ctx.ellipse(0,8,rx*.88,8,0,0,Math.PI*2);ctx.fill();ctx.restore();
   // Shaded side wall and rounded base establish a clear 3D cylinder.
   const side=ctx.createLinearGradient(-rx,0,rx,0);
   side.addColorStop(0,'#496b3b');side.addColorStop(.22,'#73934c');
