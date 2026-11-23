@@ -38,6 +38,7 @@ Preserve both original files unchanged. All production sprite assets must be der
 - Flowers should visibly regrow after being harvested.
 
 ## Flower Launcher and pile
+- The flower counter always represents the visible pile count. Spending on buildings and upgrades should visibly remove individual flower sprites from the pile and send them tumbling/falling outward with a short fade; do not simply decrement a detached currency number. Dye Maker collection removes a flower as the maker picks it up, while sale refunds visibly increase the pile.
 - The supplied collection sheet's first frame is also the permanent idle launcher pose; never show the old placeholder when the launcher is idle.
 - Draw a soft, low-opacity contact shadow directly beneath the launcher in every state (idle, collection, charge, and fire) so the machine sits naturally on the garden ground. Keep the shadow subtle and broad, not a hard black outline.
 - The launcher is the central landmark and should remain easy to find while scrolling.
