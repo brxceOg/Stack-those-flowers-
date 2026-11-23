@@ -233,36 +233,90 @@ baseWorkerSheet.onload=()=>{
 let dyeMakerAtlas=null,dyeMakerFrameMeta=[];
 function keyMagentaSheet(img){const cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;const cx=cv.getContext('2d',{willReadFrequently:true});cx.drawImage(img,0,0);const im=cx.getImageData(0,0,cv.width,cv.height),d=im.data;for(let y=0;y<cv.height;y++)for(let x=0;x<cv.width;x++){const i=(y*cv.width+x)*4,r=d[i],g=d[i+1],b=d[i+2];if(r>175&&b>145&&g<90&&r-g>75&&b-g>65)d[i+3]=0;}cx.putImageData(im,0,0);return cv}
 function cleanDyeVatSheet(img){
- const keyed=keyMagentaSheet(img),frames=[],cellEdges=Array.from({length:9},(_,i)=>Math.round(i*keyed.width/8)),h=keyed.height;
- // Isolate each bottle into its own canvas before measuring or drawing it.
- // This hard frame boundary prevents adjacent-frame pixels from ever entering
- // a crop, even when the source artwork touches a spacer line.
+ const frames=[],sheetW=img.naturalWidth,sheetH=img.naturalHeight;
+ if(!sheetW||!sheetH)return frames;
+ // IMG_1386 is eight equal horizontal cells. Copy each cell first so no
+ // later operation can sample pixels from either neighboring bottle.
+ const edges=Array.from({length:9},(_,i)=>Math.round(i*sheetW/8));
  for(let frame=0;frame<8;frame++){
-  const x0=cellEdges[frame],w=cellEdges[frame+1]-x0;
-  const cell=document.createElement('canvas');cell.width=w;cell.height=h;
+  const x0=edges[frame],cellW=edges[frame+1]-x0;
+  const cell=document.createElement('canvas');cell.width=cellW;cell.height=sheetH;
   const cc=cell.getContext('2d',{willReadFrequently:true});
-  cc.drawImage(keyed,x0,0,w,h,0,0,w,h);
-  const im=cc.getImageData(0,0,w,h),d=im.data,n=w*h,seen=new Uint8Array(n),queue=new Int32Array(n);
-  // Remove only the thin black separator rule connected to the top edge.
-  for(let seed=0;seed<w;seed++){
-   const k=seed*4;
-   if(seen[seed]||d[k+3]<=8||d[k]>105||d[k+1]>105||d[k+2]>105)continue;
-   let head=0,tail=0,minX=w,maxX=-1,minY=h,maxY=-1;
-   queue[tail++]=seed;seen[seed]=1;
-   while(head<tail){
-    const q=queue[head++],x=q%w,y=(q/w)|0;minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);
-    for(let yy=Math.max(0,y-1);yy<=Math.min(h-1,y+1);yy++)for(let xx=Math.max(0,x-1);xx<=Math.min(w-1,x+1);xx++){
-     const z=yy*w+xx,k2=z*4;if(seen[z])continue;
-     if(d[k2+3]>8&&d[k2]<106&&d[k2+1]<106&&d[k2+2]<106){seen[z]=1;queue[tail++]=z}
+  cc.drawImage(img,x0,0,cellW,sheetH,0,0,cellW,sheetH);
+  const im=cc.getImageData(0,0,cellW,sheetH),d=im.data,n=cellW*sheetH;
+  // Sample the JPEG magenta matte from this cell's perimeter. The bottle is
+  // inset from every edge, so the perimeter median is a clean local reference.
+  const perimeter=[];
+  for(let x=0;x<cellW;x++){perimeter.push(x,(sheetH-1)*cellW+x)}
+  for(let y=1;y<sheetH-1;y++){perimeter.push(y*cellW,y*cellW+cellW-1)}
+  const median=channel=>{
+   const values=perimeter.map(p=>d[p*4+channel]).sort((a,b)=>a-b);
+   return values[values.length>>1];
+  };
+  const bg=[median(0),median(1),median(2)];
+  const matteLike=p=>{
+   const i=p*4,r=d[i],g=d[i+1],b=d[i+2];
+   return r>g+65&&b>g+65&&Math.abs(r-b)<82&&
+    Math.hypot(r-bg[0],g-bg[1],b-bg[2])<175;
+  };
+  // Flood only magenta-colored pixels connected to the cell perimeter.
+  // Partially blended edge pixels are unmatted rather than left as a pink halo.
+  const seen=new Uint8Array(n),queue=new Int32Array(n);let head=0,tail=0;
+  const seed=p=>{if(!seen[p]&&matteLike(p)){seen[p]=1;queue[tail++]=p}};
+  for(let x=0;x<cellW;x++){seed(x);seed((sheetH-1)*cellW+x)}
+  for(let y=0;y<sheetH;y++){seed(y*cellW);seed(y*cellW+cellW-1)}
+  while(head<tail){
+   const p=queue[head++],x=p%cellW,y=(p/cellW)|0;
+   for(let yy=Math.max(0,y-1);yy<=Math.min(sheetH-1,y+1);yy++)
+    for(let xx=Math.max(0,x-1);xx<=Math.min(cellW-1,x+1);xx++){
+     const q=yy*cellW+xx;if(!seen[q]&&matteLike(q)){seen[q]=1;queue[tail++]=q}
     }
+  }
+  const matteRange=Math.max(bg[0],bg[1],bg[2],255-bg[0],255-bg[1],255-bg[2],1);
+  for(let k=0;k<tail;k++){
+   const p=queue[k],i=p*4;
+   const delta=Math.max(Math.abs(d[i]-bg[0]),Math.abs(d[i+1]-bg[1]),Math.abs(d[i+2]-bg[2]));
+   const alpha=Math.max(0,Math.min(1,delta/matteRange));
+   if(alpha<.075){d[i+3]=0;continue}
+   const inv=1/alpha;
+   d[i]=Math.max(0,Math.min(255,Math.round((d[i]-bg[0]*(1-alpha))*inv)));
+   d[i+1]=Math.max(0,Math.min(255,Math.round((d[i+1]-bg[1]*(1-alpha))*inv)));
+   d[i+2]=Math.max(0,Math.min(255,Math.round((d[i+2]-bg[2]*(1-alpha))*inv)));
+   d[i+3]=Math.round(alpha*255);
+  }
+  // Remove only a long, thin dark separator rule in the first 12 source rows.
+  // The bottle cap begins below this band, so its outline is never trimmed.
+  const darkSeen=new Uint8Array(n),darkQueue=new Int32Array(n);
+  for(let seedAt=0;seedAt<cellW*Math.min(12,sheetH);seedAt++){
+   const si=seedAt*4;
+   if(darkSeen[seedAt]||d[si+3]<=8||d[si]>90||d[si+1]>90||d[si+2]>90)continue;
+   let dh=0,dt=0,minX=cellW,maxX=-1,minY=sheetH,maxY=-1;
+   darkQueue[dt++]=seedAt;darkSeen[seedAt]=1;
+   while(dh<dt){
+    const p=darkQueue[dh++],x=p%cellW,y=(p/cellW)|0;
+    minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);
+    for(let yy=Math.max(0,y-1);yy<=Math.min(11,sheetH-1,y+1);yy++)
+     for(let xx=Math.max(0,x-1);xx<=Math.min(cellW-1,x+1);xx++){
+      const q=yy*cellW+xx,k=q*4;
+      if(!darkSeen[q]&&d[k+3]>8&&d[k]<91&&d[k+1]<91&&d[k+2]<91){darkSeen[q]=1;darkQueue[dt++]=q}
+     }
    }
-   if(minY<=1&&maxY-minY+1<=12&&maxX-minX+1>=w*.5)for(let j=0;j<tail;j++)d[queue[j]*4+3]=0;
+   if(maxX-minX+1>=cellW*.55&&maxY-minY+1<=12)
+    for(let k=0;k<dt;k++)d[darkQueue[k]*4+3]=0;
   }
   cc.putImageData(im,0,0);
-  let left=w,top=h,right=-1,bottom=-1;
-  for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(d[(y*w+x)*4+3]>8){left=Math.min(left,x);right=Math.max(right,x);top=Math.min(top,y);bottom=Math.max(bottom,y)}
-  if(right<left){frames.push({canvas:cell,bounds:{x:0,y:0,w,h}});continue}
-  frames.push({canvas:cell,bounds:{x:left,y:top,w:right-left+1,h:bottom-top+1}});
+  // Tight per-bottle alpha crop with a two-pixel safety rim. The resulting
+  // canvas contains no pixels from another cell and no oversized shared sheet.
+  let left=cellW,top=sheetH,right=-1,bottom=-1;
+  for(let y=0;y<sheetH;y++)for(let x=0;x<cellW;x++)if(d[(y*cellW+x)*4+3]>8){
+   left=Math.min(left,x);right=Math.max(right,x);top=Math.min(top,y);bottom=Math.max(bottom,y);
+  }
+  if(right<left||bottom<top){frames.push({canvas:document.createElement('canvas'),bounds:{x:0,y:0,w:0,h:0}});continue}
+  left=Math.max(0,left-2);top=Math.max(0,top-2);
+  right=Math.min(cellW-1,right+2);bottom=Math.min(sheetH-1,bottom+2);
+  const cut=document.createElement('canvas');cut.width=right-left+1;cut.height=bottom-top+1;
+  cut.getContext('2d').drawImage(cell,left,top,cut.width,cut.height,0,0,cut.width,cut.height);
+  frames.push({canvas:cut,bounds:{x:0,y:0,w:cut.width,h:cut.height}});
  }
  return frames;
 }
