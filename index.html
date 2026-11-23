@@ -412,7 +412,7 @@ function drawDyeTent(t){
  // animation cel to one world-space baseline so brewing art cannot make it dip.
  const drawY=-96+(367-bottom)*(140/368);
  // Keep the soft ground shadow behind the tent, but let its lower edge show beneath the fixed tent base.
- ctx.fillStyle='rgba(42,75,39,.2)';ctx.beginPath();ctx.ellipse(0,43,56,10,0,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle='rgba(42,75,39,.2)';ctx.beginPath();ctx.ellipse(0,36,56,10,0,0,Math.PI*2);ctx.fill();
  ctx.imageSmoothingEnabled=true;ctx.drawImage(dyeTentCanvas,frame*346,row*368,346,368,-66,drawY,132,140);
  if(selectedStructure&&selectedStructure.type==='tent'&&selectedStructure.ref===t){ctx.strokeStyle='#ffe28a';ctx.lineWidth=3;ctx.strokeRect(-68,-98,136,140)}
  ctx.restore()
