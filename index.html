@@ -84,7 +84,7 @@ function renderBloom(){
 const W=2600,H=1900,center={x:W/2,y:H/2};
 const BUILD_GRID=96; // Shared footprint/alignment unit for all placeable structures.
 let dpr=1,viewW=0,viewH=0,camera={x:center.x,y:center.y,zoom:.78},placing=false,planningHousing=false,removingSection=false,selling=false,selectedStructure=null,pendingSale=null,selectionStart=null,selectionCurrent=null,menuOpen=false;
-const CHARACTER_DISPLAY_SCALE=.85; // Shared display-only scale for default workers and Dye Makers.
+const CHARACTER_DISPLAY_SCALE=.72; // Compact shared display scale for small, clearly readable workers and Dye Makers.
 let workerRunUpgradeLevel=0,launcherSpeedUpgradeLevel=0;
 let totalFlowers=10,totalDelivered=0,depositedFlowers=[],workers=[],houses=[],campfires=[],dyeTents=[],dyeMakers=[],dyeVats=[],sections=[],flowers=[],particles=[],upgradePops=[],launched=[],tossedFlowers=[],last=performance.now(),toastTimer=0,saveClock=0,nextWorkerId=1,nextDyeMakerId=1;
 const SAVE_KEY='stackThoseFlowersSaveV2';
