@@ -232,6 +232,34 @@ baseWorkerSheet.onload=()=>{
 };
 let dyeMakerAtlas=null,dyeMakerFrameMeta=[];
 function keyMagentaSheet(img){const cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;const cx=cv.getContext('2d',{willReadFrequently:true});cx.drawImage(img,0,0);const im=cx.getImageData(0,0,cv.width,cv.height),d=im.data;for(let y=0;y<cv.height;y++)for(let x=0;x<cv.width;x++){const i=(y*cv.width+x)*4,r=d[i],g=d[i+1],b=d[i+2];if(r>175&&b>145&&g<90&&r-g>75&&b-g>65)d[i+3]=0;}cx.putImageData(im,0,0);return cv}
+function cleanDyeVatSheet(img){
+ const cv=keyMagentaSheet(img),cx=cv.getContext('2d',{willReadFrequently:true}),frameW=Math.ceil(cv.width/8),h=cv.height;
+ const im=cx.getImageData(0,0,cv.width,h),d=im.data;
+ // The source has a stray black rule floating above each bottle. Remove only
+ // thin, top-edge-connected horizontal components within each bottle cell;
+ // dark bottle outlines and the bottom edges remain untouched.
+ for(let frame=0;frame<8;frame++){
+  const x0=Math.round(frame*cv.width/8),x1=Math.round((frame+1)*cv.width/8),w=x1-x0,n=w*h;
+  const seen=new Uint8Array(n),queue=new Int32Array(n);
+  for(let seed=0;seed<w;seed++){
+   const p=seed,idx=(p*4)+x0*4;
+   if(seen[p]||d[idx+3]<=8||d[idx]>105||d[idx+1]>105||d[idx+2]>105)continue;
+   let head=0,tail=0,minX=w,maxX=-1,minY=h,maxY=-1;
+   queue[tail++]=p;seen[p]=1;
+   while(head<tail){
+    const q=queue[head++],x=q%w,y=(q/w)|0;minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);
+    for(let yy=Math.max(0,y-1);yy<=Math.min(h-1,y+1);yy++)for(let xx=Math.max(0,x-1);xx<=Math.min(w-1,x+1);xx++){
+     const z=yy*w+xx;if(seen[z])continue;const k=((yy*cv.width+x0+xx)*4);
+     if(d[k+3]>8&&d[k]<106&&d[k+1]<106&&d[k+2]<106){seen[z]=1;queue[tail++]=z}
+    }
+   }
+   if(minY<=1&&maxY-minY+1<=12&&maxX-minX+1>=w*.5){
+    for(let j=0;j<tail;j++){const q=queue[j],x=q%w,y=(q/w)|0;d[(y*cv.width+x0+x)*4+3]=0}
+   }
+  }
+ }
+ cx.putImageData(im,0,0);return cv;
+}
 workerDrinkSheet.onload=()=>{
  // IMG_1395 is used only for its lower-row four-frame pick-up-and-drink sequence.
  // Vat approach movement continues to use the worker's existing walk/run sheets.
@@ -252,7 +280,7 @@ dyeMakerSheet.onload=()=>{
  dyeMakerCarryFrames=dyeMakerFrameMeta.slice(12,16);
 };
 dyeTentSheet.onload=()=>{dyeTentCanvas=keyMagentaSheet(dyeTentSheet)};
-dyeVatSheet.onload=()=>{dyeVatCanvas=keyMagentaSheet(dyeVatSheet)};
+dyeVatSheet.onload=()=>{dyeVatCanvas=cleanDyeVatSheet(dyeVatSheet);dyeVatFrameBounds=null};
 const launcherCollection=new Image();launcherCollection.src='assets/flower-launcher-collection.png?v=matte-unmix-1122-0723';
 const launcherCharge=new Image();launcherCharge.src='assets/flower-launcher-charge.png?v=matte-unmix-1122-0723';
 const launcherFire=new Image();launcherFire.src='assets/flower-launcher-fire.png?v=matte-unmix-1122-0723';
@@ -741,7 +769,7 @@ function assignFlower(w){
  for(const w of workers){
   if(w.dyeBuffDelay>0){w.dyeBuffDelay=Math.max(0,w.dyeBuffDelay-dt);if(w.dyeBuffDelay===0){w.dyeBuffTimer=90;saveGame()}}
    if(w.dyeBuffTimer>0)w.dyeBuffTimer=Math.max(0,w.dyeBuffTimer-dt);
-  if((w.state==='idle'||w.state==='search'||w.state==='toFlower')&&dyeVats.length&&Math.random()<.02*dt){
+  if((w.state==='idle'||w.state==='search'||w.state==='toFlower')&&(w.dyeBuffTimer||0)<=0&&(w.dyeBuffDelay||0)<=0&&dyeVats.length&&Math.random()<.02*dt){
    const claimed=workers.filter(other=>other!==w&&other.drinkVat).map(other=>other.drinkVat);
    const vat=dyeVats.filter(v=>!claimed.includes(v)).sort((a,b)=>dist(w,a)-dist(w,b))[0];
    if(vat){if(w.state==='toFlower')releaseFlowerReservation(w);w.drinkVat=vat;w.state='toDyeVat';const vatX=Number.isFinite(vat.tx)?vat.tx:vat.x,vatY=Number.isFinite(vat.ty)?vat.ty:vat.y;w.target={x:vatX-28,y:vatY+10};w.anim=0}
