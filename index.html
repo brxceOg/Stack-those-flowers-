@@ -736,9 +736,20 @@ function drawWorld(){
  ctx.clearRect(0,0,viewW,viewH);ctx.save();ctx.translate(viewW/2,viewH/2);ctx.scale(camera.zoom,camera.zoom);ctx.translate(-camera.x,-camera.y);
  drawGround();if(placing||planningHousing||selling)drawPlacementGrid();drawPlannedSections();for(const f of flowers)drawFlower(f);for(const h of houses)drawHouse(h);for(const c of campfires)drawCampfire(c);for(const w of dyeMakers)if(w.state==='toTent'||w.state==='inside'||w.state==='exitingTent')drawDyeMaker(w);for(const t of dyeTents)drawDyeTent(t);drawLauncher();drawPile();for(const v of dyeVats)drawDyeVat(v);
  for(const p of particles){ctx.fillStyle=p.color;ctx.globalAlpha=Math.max(0,p.life);ctx.beginPath();ctx.arc(p.x,p.y,4,0,7);ctx.fill()}ctx.globalAlpha=1;
- // Footstep dust is drawn after the ground/structures but before all
- // character sprites, keeping every puff tucked beneath the feet.
- for(const puff of footstepPuffs){const t=Math.max(0,puff.life/puff.duration),fade=Math.sin(t*Math.PI/2);ctx.save();ctx.globalAlpha=fade*.34;ctx.translate(puff.x,puff.y+(1-t)*2);const s=puff.scale*(.7+(1-t)*.45);ctx.fillStyle='#eee6c9';ctx.beginPath();ctx.ellipse(0,0,5.2*s,2.5*s,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=fade*.19;ctx.beginPath();ctx.ellipse(-3.4*s,-.8*s,3.2*s,1.8*s,-.25,0,Math.PI*2);ctx.ellipse(3.1*s,-.5*s,3.5*s,1.7*s,.22,0,Math.PI*2);ctx.fill();ctx.restore()}
+ // Draw a blocky, irregular pixel-smoke cloud beneath each character.
+ // Its pixels spread slightly, rise, and fade rather than forming an oval.
+ for(const puff of footstepPuffs){
+  const t=Math.max(0,puff.life/puff.duration),fade=Math.sin(t*Math.PI/2);
+  const spread=(1-t)*2.2,rise=(1-t)*3.2,s=puff.scale*(.78+(1-t)*.34);
+  ctx.save();ctx.globalAlpha=fade*.48;ctx.translate(puff.x,puff.y+rise);
+  for(let i=0;i<puff.pixels.length;i++){
+   const [px,py,size]=puff.pixels[i];
+   ctx.fillStyle=i%3===0?'#d9d2b8':i%3===1?'#eee6ce':'#c8c1a8';
+   const block=size*s;
+   ctx.fillRect((px*s)-block/2+(px===0?0:Math.sign(px)*spread),py*s-block/2,block,block);
+  }
+  ctx.restore();
+ }
  for(const t of tossedFlowers)drawTossedFlower(t);
   for(const l of launched)drawMachineFlower(l);
   for(const w of workers)drawWorker(w);for(const w of dyeMakers)if(w.state!=='toTent'&&w.state!=='inside'&&w.state!=='exitingTent')drawDyeMaker(w);
@@ -764,9 +775,13 @@ function drawTossedFlower(t){
 }
 function availablePileFlowers(){return depositedFlowers.length}
  function emitFootstepPuff(obj){
- // One compact dust puff per alternating footfall. Keep a hard cap so large
- // colonies cannot accumulate an unbounded number of transient effects.
- footstepPuffs.push({x:obj.x+rand(-2.5,2.5),y:obj.y+2,life:.32,duration:.32,scale:rand(.78,1.12),drift:rand(-7,7)});
+ // A tiny cluster of chunky pixels gives each footfall a soft smoke-poof
+ // silhouette without relying on blurry/translucent oval primitives.
+ const pixels=[
+  [-5,-1,3.5],[-2,-3,4],[2,-3,3.5],[5,-1,3],
+  [-3,1,4],[1,1,4],[4,2,2.8],[0,-5,2.5]
+ ];
+ footstepPuffs.push({x:obj.x+rand(-2.5,2.5),y:obj.y+2,life:.32,duration:.32,scale:rand(.88,1.12),drift:rand(-7,7),pixels});
  if(footstepPuffs.length>100)footstepPuffs.splice(0,footstepPuffs.length-100);
 }
 function moveToward(obj,target,speed,dt){const dx=target.x-obj.x,dy=target.y-obj.y,d=Math.hypot(dx,dy);if(Math.abs(dx)>0.01)obj.facing=dx<0?-1:1;if(d<speed*dt+3){obj.x=target.x;obj.y=target.y;return true}obj.x+=dx/d*speed*dt;obj.y+=dy/d*speed*dt;obj.anim+=dt;
