@@ -628,32 +628,10 @@ function drawPile(){
  const x=launcher.x+225,y=launcher.y+54,count=depositedFlowers.length;
  ctx.save();ctx.translate(x,y);
  if(count>0){
-  const tiers=Math.ceil(count/PILE_TIER_CAPACITY),rx=63,ry=23;
-  const bodyHeight=12+(tiers-1)*15,topY=-bodyHeight;
-  // Keep the pile's only cast shadow as a compact contact shadow at its base.
-  // It must not extend up behind the tower silhouette.
+  // Flowers are the entire pile: retain only a subtle ground-contact shadow.
+  // No backing body, platform, side wall, or top cap is drawn.
   ctx.save();ctx.globalAlpha=.2;ctx.fillStyle='#263b25';
-  ctx.beginPath();ctx.ellipse(0,8,rx*.88,8,0,0,Math.PI*2);ctx.fill();ctx.restore();
-  // Shaded side wall and rounded base establish a clear 3D cylinder.
-  const side=ctx.createLinearGradient(-rx,0,rx,0);
-  side.addColorStop(0,'#496b3b');side.addColorStop(.22,'#73934c');
-  side.addColorStop(.52,'#8eaa59');side.addColorStop(.82,'#668747');
-  side.addColorStop(1,'#3f6037');
-  ctx.beginPath();ctx.moveTo(-rx,topY);
-  ctx.lineTo(-rx,0);
-  ctx.bezierCurveTo(-rx,-12,-rx*.52,10,0,10);
-  ctx.bezierCurveTo(rx*.52,10,rx,-12,rx,0);
-  ctx.lineTo(rx,topY);ctx.closePath();ctx.fillStyle=side;ctx.fill();
-  ctx.strokeStyle='rgba(39,66,34,.55)';ctx.lineWidth=2;ctx.stroke();
-  // Subtle vertical highlights make the curved side read as rounded.
-  const shine=ctx.createLinearGradient(-rx,0,-rx+18,0);
-  shine.addColorStop(0,'rgba(255,255,210,.22)');shine.addColorStop(1,'rgba(255,255,210,0)');
-  ctx.fillStyle=shine;ctx.fillRect(-rx+2,topY+8,16,bodyHeight-4);
-  ctx.beginPath();ctx.ellipse(0,topY,rx,ry,0,0,Math.PI*2);
-  const cap=ctx.createLinearGradient(0,topY-ry,0,topY+ry);
-  cap.addColorStop(0,'#a8bd70');cap.addColorStop(.55,'#809e55');cap.addColorStop(1,'#587b40');
-  ctx.fillStyle=cap;ctx.fill();ctx.strokeStyle='rgba(44,73,36,.7)';ctx.lineWidth=2;ctx.stroke();
-  // Draw every flower as its own sprite, sorted back-to-front by screen depth.
+  ctx.beginPath();ctx.ellipse(0,8,52,7,0,0,Math.PI*2);ctx.fill();ctx.restore();
   if(atlasReady){
    const placed=[];
    for(let i=0;i<count;i++)placed.push({index:i,slot:pileFlowerPosition(i,count)});
@@ -668,7 +646,6 @@ function drawPile(){
  }
  ctx.restore();
 }
-const CHARACTER_DISPLAY_SCALE=.85; // Shared display-only reduction for every character type.
 function drawWorker(w){
  ctx.save();ctx.translate(w.x,w.y);
  const boosted=isWorkerBoosted(w),dyeBuffed=(w.dyeBuffTimer||0)>0;
