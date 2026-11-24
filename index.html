@@ -85,7 +85,7 @@ const W=2600,H=1900,center={x:W/2,y:H/2};
 const BUILD_GRID=96; // Shared footprint/alignment unit for all placeable structures.
 let dpr=1,viewW=0,viewH=0,camera={x:center.x,y:center.y,zoom:.78},placing=false,planningHousing=false,removingSection=false,selling=false,selectedStructure=null,pendingSale=null,selectionStart=null,selectionCurrent=null,menuOpen=false;
 const CHARACTER_DISPLAY_SCALE=.72; // Compact shared display scale for small, clearly readable workers and Dye Makers.
-let workerRunUpgradeLevel=0,launcherSpeedUpgradeLevel=0;
+let workerRunUpgradeLevel=0,launcherSpeedUpgradeLevel=0,launcherBonusChanceLevel=0;
 let totalFlowers=10,totalDelivered=0,depositedFlowers=[],spentFlowers=[],workers=[],houses=[],campfires=[],dyeTents=[],dyeMakers=[],dyeVats=[],sections=[],flowers=[],particles=[],footstepPuffs=[],upgradePops=[],launched=[],tossedFlowers=[],last=performance.now(),toastTimer=0,saveClock=0,nextWorkerId=1,nextDyeMakerId=1;
 const SAVE_KEY='stackThoseFlowersSaveV2';
 try{localStorage.removeItem('stackThoseFlowersSaveV1')}catch(e){}
@@ -465,7 +465,7 @@ function seedWorld(){
  }
 }
 seedWorld();
-function loadGame(){try{const data=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!data||(data.version!==2&&data.version!==3))return;totalFlowers=Math.max(0,Number(data.flowers)||0);totalDelivered=Math.max(0,Number(data.delivered)||0);depositedFlowers=Array.isArray(data.pileFlowers)?data.pileFlowers.filter(t=>typeof t==='string'&&Object.prototype.hasOwnProperty.call(FLOWER_SOURCE_X,t)).slice(0,10000):Array.from({length:Math.min(totalDelivered,10000)},(_,i)=>FLOWER_TYPES[(i*7+Math.floor(i/3))%FLOWER_TYPES.length]);if(depositedFlowers.length>totalDelivered)depositedFlowers.length=totalDelivered;workerRunUpgradeLevel=Math.max(0,Math.floor(Number(data.workerRunUpgradeLevel)||0));launcherSpeedUpgradeLevel=Math.max(0,Math.floor(Number(data.launcherSpeedUpgradeLevel)||0));sections=Array.isArray(data.sections)?data.sections.filter(z=>z&&z.category==='housing'&&Number.isInteger(z.x)&&Number.isInteger(z.y)&&Number.isInteger(z.w)&&Number.isInteger(z.h)&&z.w>=1&&z.h>=1):[];
+function loadGame(){try{const data=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!data||(data.version!==2&&data.version!==3))return;totalFlowers=Math.max(0,Number(data.flowers)||0);totalDelivered=Math.max(0,Number(data.delivered)||0);depositedFlowers=Array.isArray(data.pileFlowers)?data.pileFlowers.filter(t=>typeof t==='string'&&Object.prototype.hasOwnProperty.call(FLOWER_SOURCE_X,t)).slice(0,10000):Array.from({length:Math.min(totalDelivered,10000)},(_,i)=>FLOWER_TYPES[(i*7+Math.floor(i/3))%FLOWER_TYPES.length]);if(depositedFlowers.length>totalDelivered)depositedFlowers.length=totalDelivered;workerRunUpgradeLevel=Math.max(0,Math.floor(Number(data.workerRunUpgradeLevel)||0));launcherSpeedUpgradeLevel=Math.max(0,Math.floor(Number(data.launcherSpeedUpgradeLevel)||0));launcherBonusChanceLevel=Math.max(0,Math.min(10,Math.floor(Number(data.launcherBonusChanceLevel)||0)));sections=Array.isArray(data.sections)?data.sections.filter(z=>z&&z.category==='housing'&&Number.isInteger(z.x)&&Number.isInteger(z.y)&&Number.isInteger(z.w)&&Number.isInteger(z.h)&&z.w>=1&&z.h>=1):[];
  // Migrate existing saves onto the shared structure grid. Snap legacy house
  // positions to cell centers, keep them inside the garden, and collapse any
  // legacy placements that land in the same cell. Persist the migrated layout.
@@ -475,7 +475,7 @@ function loadGame(){try{const data=JSON.parse(localStorage.getItem(SAVE_KEY)||'n
  dyeVats=Array.isArray(data.dyeVats)?data.dyeVats.filter(v=>Number.isFinite(v.x)&&Number.isFinite(v.y)).map(v=>({...v,type:Math.max(0,Math.min(7,Math.floor(Number(v.type)||0)))})):[];
  dyeMakers=dyeTents.map(t=>({id:nextDyeMakerId++,tent:t,x:t.x,y:t.y+(t.brewing?42:48),state:t.brewing?'inside':'idle',anim:0,carry:false}));
  workers=houses.map(h=>({id:nextWorkerId++,houseX:h.x,houseY:h.y,x:h.x,y:h.y+35,state:'search',anim:0,carry:null,target:null,pickingFlower:null,dyeBuffTimer:0,drinkVat:null}));saveGame();}catch(e){}}
-function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({version:3,flowers:totalFlowers,delivered:totalDelivered,pileFlowers:depositedFlowers,workerRunUpgradeLevel,launcherSpeedUpgradeLevel,houses,campfires,dyeTents,dyeVats,sections}));}catch(e){}}
+function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({version:3,flowers:totalFlowers,delivered:totalDelivered,pileFlowers:depositedFlowers,workerRunUpgradeLevel,launcherSpeedUpgradeLevel,launcherBonusChanceLevel,houses,campfires,dyeTents,dyeVats,sections}));}catch(e){}}
 const hadSavedGame=!!localStorage.getItem(SAVE_KEY);loadGame();if(depositedFlowers.length>totalFlowers)depositedFlowers.length=totalFlowers;totalFlowers=depositedFlowers.length;totalDelivered=depositedFlowers.length;if(!hadSavedGame){for(let i=0;i<10;i++)depositedFlowers.push(FLOWER_TYPES[(i*7+Math.floor(i/3))%FLOWER_TYPES.length]);totalFlowers=totalDelivered=depositedFlowers.length;}relocateFlowersFromPlannedAreas();addEventListener('pagehide',saveGame);
 const launcher={x:center.x,y:center.y,scale:1};
 function drawGround(){
@@ -598,14 +598,14 @@ function drawLauncher(){
  ctx.fillStyle='#5b8247';ctx.beginPath();ctx.ellipse(0,50,125,48,0,0,7);ctx.fill();ctx.fillStyle='#7d5635';ctx.fillRect(-65,-24,130,74);ctx.fillStyle='#c88a4c';ctx.fillRect(-55,-44,110,25);ctx.fillStyle='#e6c078';ctx.beginPath();ctx.moveTo(-70,-43);ctx.lineTo(0,-100);ctx.lineTo(70,-43);ctx.closePath();ctx.fill();ctx.fillStyle='#395c40';ctx.fillRect(-31,-5,62,34);ctx.fillStyle='#f7d66e';ctx.beginPath();ctx.arc(0,-22,16,0,7);ctx.fill();ctx.fillStyle='#fff0b5';ctx.beginPath();ctx.arc(0,-22,8,0,7);ctx.fill();ctx.fillStyle='#6a452f';ctx.fillRect(58,-4,24,9);ctx.fillRect(76,-13,9,27);ctx.restore();
 }
 function emitLauncherBurst(){for(let i=0;i<10;i++)particles.push({x:launcher.x+rand(-20,20),y:launcher.y+rand(-20,15),vx:rand(60,180),vy:rand(-150,-40),life:rand(.4,.8),color:['#fff0d8','#ed6b9d','#e95360','#f4c14c'][i%4]});}
-function startLauncherSequence(type='daisy'){launcherAnim.state='collection';launcherAnim.time=0;launcherAnim.flowerType=type||'daisy'}
+function startLauncherSequence(type='daisy',bonusEligible=true){if(type&&typeof type==='object'){bonusEligible=type.bonusEligible!==false;type=type.type||'daisy'}launcherAnim.state='collection';launcherAnim.time=0;launcherAnim.flowerType=type||'daisy';launcherAnim.bonusEligible=bonusEligible}
 function updateLauncher(dt){
  if(launcherAnim.state==='idle'){if(launcherAnim.queue.length)startLauncherSequence(launcherAnim.queue.shift());return}
  launcherAnim.time+=dt;
  const speed=launcherProcessingSpeedMultiplier();const duration=(launcherAnim.state==='collection'?.6:(launcherAnim.state==='charge'?.72:.54))/speed;
  if(launcherAnim.time<duration)return;
  if(launcherAnim.state==='collection'){launcherAnim.state='charge';launcherAnim.time=0}
- else if(launcherAnim.state==='charge'){launcherAnim.state='fire';launcherAnim.time=0;launched.push({type:launcherAnim.flowerType,time:0,duration:.54/launcherProcessingSpeedMultiplier(),x:launcher.x+72,y:launcher.y-34,tx:launcher.x+200,ty:launcher.y+22})}
+ else if(launcherAnim.state==='charge'){launcherAnim.state='fire';launcherAnim.time=0;launched.push({type:launcherAnim.flowerType,time:0,duration:.54/launcherProcessingSpeedMultiplier(),x:launcher.x+72,y:launcher.y-34,tx:launcher.x+200,ty:launcher.y+22});if(launcherAnim.bonusEligible&&launcherBonusChanceLevel>0&&Math.random()<launcherBonusChance()){launcherAnim.queue.unshift({type:launcherAnim.flowerType,bonusEligible:false});toast('Bonus flower! 🌸')}}
  else{emitLauncherBurst();if(launcherAnim.queue.length)startLauncherSequence(launcherAnim.queue.shift());else{launcherAnim.state='idle';launcherAnim.time=0}}
 }
 const PILE_TIER_CAPACITY=18;
@@ -926,7 +926,7 @@ function assignFlower(w){
  for(const l of launched)l.time+=dt;const completedFlights=launched.filter(l=>l.time>=l.duration);for(const l of completedFlights){depositedFlowers.push(l.type||'daisy');if(depositedFlowers.length>10000)depositedFlowers.shift();totalFlowers=depositedFlowers.length;totalDelivered=depositedFlowers.length}if(completedFlights.length)saveGame();launched=launched.filter(l=>l.time<l.duration);
  document.getElementById('workerCount').textContent=workers.length;document.getElementById('flowerCount').textContent=depositedFlowers.length;
 }
-function launchFlower(type='daisy'){if(launcherAnim.state==='idle'&&launcherAnim.queue.length===0)startLauncherSequence(type);else launcherAnim.queue.push(type||'daisy')}
+function launchFlower(type='daisy'){if(launcherAnim.state==='idle'&&launcherAnim.queue.length===0)startLauncherSequence(type);else launcherAnim.queue.push({type:type||'daisy',bonusEligible:true})}
 function frame(now){const dt=Math.min(.04,(now-last)/1000);last=now;update(dt);drawWorld();renderBloom();requestAnimationFrame(frame)}requestAnimationFrame(frame);
 let pointer={x:0,y:0},drag=null,pointers=new Map(),pinchStart=null;
 canvas.addEventListener('pointerdown',e=>{pointer={x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===2){const a=[...pointers.values()];pinchStart={distance:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y),zoom:camera.zoom};drag=null;selectionStart=null;return}if(planningHousing){const c=cellIndexAtWorld(screenToWorld(e.clientX,e.clientY));selectionStart=c;selectionCurrent=c;drag={id:e.pointerId,x:e.clientX,y:e.clientY,moved:false,planning:true};return}drag={id:e.pointerId,x:e.clientX,y:e.clientY,cx:camera.x,cy:camera.y,moved:false}});
@@ -946,7 +946,10 @@ document.getElementById('campfireButton').onclick=()=>{if(!sections.some(z=>z.ca
 function workerRunSpeedMultiplier(){return 1+workerRunUpgradeLevel*.05}
 function launcherProcessingSpeedMultiplier(){return Math.pow(1.15,launcherSpeedUpgradeLevel)}
 function launcherSpeedUpgradeCost(){return Math.ceil(50*Math.pow(1.6,launcherSpeedUpgradeLevel))}
+function launcherBonusChance(){return launcherBonusChanceLevel*.05}
+function launcherBonusUpgradeCost(){return Math.ceil(75*Math.pow(1.6,launcherBonusChanceLevel))}
 function workerRunUpgradeCost(){return Math.ceil(25*Math.pow(1.5,workerRunUpgradeLevel))}
+document.getElementById('structureUpgradeTwo').onclick=()=>{if(!selectedStructure||selectedStructure.type!=='launcher')return;if(launcherBonusChanceLevel>=10){toast('Bonus Flower Chance is already at maximum!');return}const cost=launcherBonusUpgradeCost();if(totalFlowers<cost){toast('You need '+cost+' flowers for Bonus Flower Chance');return}if(!spendFlowers(cost)){toast('You need '+cost+' flowers in the pile');return}launcherBonusChanceLevel++;upgradePops.push({x:launcher.x,y:launcher.y-35,time:0,duration:1.05});saveGame();toast('Bonus Flower Chance upgraded to '+Math.round(launcherBonusChance()*100)+'%');document.getElementById('structureUpgradeTwo').textContent='✦ Bonus Flower Chance +5% · '+(launcherBonusChanceLevel>=10?'MAX':launcherBonusUpgradeCost()+' flowers')};
 document.getElementById('structureUpgradeOne').onclick=()=>{
  if(!selectedStructure)return;
  if(selectedStructure.type==='launcher'){
@@ -982,12 +985,12 @@ function openStructureMenu(type,ref,clientX,clientY){
   upgradeTwo.disabled=true;upgradeTwo.textContent='✦ More upgrades · Coming soon';
  }else if(type==='launcher'){
   upgradeOne.disabled=false;upgradeOne.textContent='⚙ Processing Speed +15% · '+launcherSpeedUpgradeCost()+' flowers';
-  upgradeTwo.disabled=true;upgradeTwo.textContent='✦ More upgrades · Coming soon';
+  upgradeTwo.disabled=launcherBonusChanceLevel>=10;upgradeTwo.textContent='✦ Bonus Flower Chance +5% · '+(launcherBonusChanceLevel>=10?'MAX':launcherBonusUpgradeCost()+' flowers');
  }else{
   upgradeOne.disabled=true;upgradeOne.textContent=type==='campfire'?'⬆ Campfire upgrade · Coming soon':'⬆ Dye production upgrade · Coming soon';
   upgradeTwo.disabled=true;upgradeTwo.textContent='✦ More upgrades · Coming soon';
  }
- const rect=document.getElementById('game').getBoundingClientRect(),width=164,height=198,gap=10;
+ const rect=document.getElementById('game').getBoundingClientRect(),width=164,height=238,gap=10;
  let left=clientX-rect.left+gap,top=clientY-rect.top-height/2;
  if(left+width>rect.width-8)left=clientX-rect.left-width-gap;
  left=Math.max(8,Math.min(rect.width-width-8,left));
