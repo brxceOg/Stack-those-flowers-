@@ -17,7 +17,7 @@ A standalone, mobile-first idle gathering game for iPhone Safari, hosted as a Gi
 - Worker House costs 10 deposited flowers and creates one worker.
 - Campfire costs 25 deposited flowers, occupies one 96 × 96 grid tile inside a planned housing area, and animates using the four isolated frames in the bottom row of the transparent `IMG_1382.jpeg` sprite atlas; the top row is excluded from playback. Playback runs at 6 frames per second so the flame silhouette changes remain readable at the compact 50 × 50 draw size.
 - Workers assigned to a tower whose position is within 320 world units of a campfire receive +20% movement speed and +20% flower-picking speed. The check uses the worker house/tower position, not the worker's changing position, so one campfire can boost every nearby tower. Campfires are saved with the world.
-- One flower is deposited per successful worker delivery.
+- One flower is deposited per successful worker delivery. The Flower Launcher has a persistent Bonus Flower Chance upgrade: each level adds 5 percentage points (up to 50%) for a delivered flower to trigger one additional launch of the same flower. Bonus launches cannot trigger further bonus launches. Upgrade purchases spend flowers from the visible pile.
 - Picked flowers regrow after a short cooldown.
 - Camera supports one-finger drag, two-finger pinch zoom, zoom buttons, and a recenter button.
 - The HUD and build drawer remain fixed while the world moves beneath them.
