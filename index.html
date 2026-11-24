@@ -605,7 +605,7 @@ function updateLauncher(dt){
  const speed=launcherProcessingSpeedMultiplier();const duration=(launcherAnim.state==='collection'?.6:(launcherAnim.state==='charge'?.72:.54))/speed;
  if(launcherAnim.time<duration)return;
  if(launcherAnim.state==='collection'){launcherAnim.state='charge';launcherAnim.time=0}
- else if(launcherAnim.state==='charge'){launcherAnim.state='fire';launcherAnim.time=0;launched.push({type:launcherAnim.flowerType,time:0,duration:.54/launcherProcessingSpeedMultiplier(),x:launcher.x+72,y:launcher.y-34,tx:launcher.x+200,ty:launcher.y+22});if(launcherAnim.bonusEligible&&launcherBonusChanceLevel>0&&Math.random()<launcherBonusChance()){launcherAnim.queue.unshift({type:launcherAnim.flowerType,bonusEligible:false});toast('Bonus flower! 🌸')}}
+ else if(launcherAnim.state==='charge'){launcherAnim.state='fire';launcherAnim.time=0;const flight={type:launcherAnim.flowerType,time:0,duration:.54/launcherProcessingSpeedMultiplier(),x:launcher.x+72,y:launcher.y-34,tx:launcher.x+200,ty:launcher.y+22};launched.push(flight);if(launcherAnim.bonusEligible&&launcherBonusChanceLevel>0&&Math.random()<launcherBonusChance()){launched.push({...flight,time:0})}}
  else{emitLauncherBurst();if(launcherAnim.queue.length)startLauncherSequence(launcherAnim.queue.shift());else{launcherAnim.state='idle';launcherAnim.time=0}}
 }
 const PILE_TIER_CAPACITY=18;
